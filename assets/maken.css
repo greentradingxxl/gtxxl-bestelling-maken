@@ -1,0 +1,60 @@
+/* Het venster "Snelle bestelling" en "Bestelling dupliceren". De basis van het venster (kop, kolommen, regels,
+   meldingen) komt uit de opmaak van "Bestelling wijzigen". */
+
+/* Vaste afmeting: het venster verspringt niet als er regels bij komen of weggaan; een lange lijst schuift binnen het venster. */
+.gtxxl-bm { display: flex; flex-direction: column; height: min(800px, 92vh); max-width: 1120px; }
+.gtxxl-bm .gtxxl-wz__inhoud { flex: 1 1 auto; min-height: 0; }
+.gtxxl-bm .gtxxl-wz__rechts { overflow-y: auto; }
+.gtxxl-bm .gtxxl-wz__rechts h3 { margin-top: 18px; }
+.gtxxl-bm .gtxxl-wz__rechts h3:first-child { margin-top: 0; }
+/* Links: de klant bovenaan, daaronder de producten; de lijst schuift, "Product toevoegen" staat vast onderaan. */
+.gtxxl-bm .gtxxl-wz__links { display: flex; flex-direction: column; min-height: 0; }
+.gtxxl-bm__klant { flex: 0 0 auto; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #e2e6e3; }
+.gtxxl-bm__producten { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.gtxxl-bm__lijst { flex: 1 1 auto; min-height: 60px; overflow-y: auto; }
+.gtxxl-bm .gtxxl-wz__zoek { flex: 0 0 auto; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e6e3; }
+.gtxxl-bm .gtxxl-wz__uitleg { flex: 0 0 auto; margin-top: 10px; }
+.gtxxl-bm__snel { margin: -4px 0 8px; font-size: 12px; color: #7a857e; }
+
+/* De klant */
+.gtxxl-bm__klant-zoek { display: flex; gap: 8px; align-items: flex-start; }
+.gtxxl-bm__klant-zoek .select2-container { flex: 1 1 auto; min-width: 0; }
+.gtxxl-bm__klant-zoek .button { flex: 0 0 auto; }
+.gtxxl-bm__klant-kaart { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; padding: 12px 14px; border: 1px solid #dde4df; border-radius: 8px; background: #f7f9f6; }
+.gtxxl-bm__klant-tekst strong { display: block; margin-bottom: 2px; font-size: 14px; }
+.gtxxl-bm__klant-tekst span { display: block; color: #50575e; font-size: 13px; line-height: 1.5; }
+.gtxxl-bm__klant-tekst .gtxxl-bm__btw { color: #23582c; }
+.gtxxl-bm__klant-links { display: flex; flex: 0 0 auto; flex-direction: column; gap: 4px; align-items: flex-end; white-space: nowrap; }
+.gtxxl-bm__klant.is-open { flex: 1 1 auto; min-height: 0; margin-bottom: 0; padding-bottom: 0; border-bottom: 0; overflow-y: auto; }
+.gtxxl-bm__klant-form { padding: 2px 4px 2px 2px; }
+.gtxxl-bm__rij { display: flex; gap: 10px; margin-bottom: 8px; }
+.gtxxl-bm__veld { display: block; flex: 1 1 0; min-width: 0; }
+.gtxxl-bm__veld.is-breed { flex: 2 1 0; }
+.gtxxl-bm__veld span { display: block; margin-bottom: 2px; color: #50575e; font-size: 12px; }
+.gtxxl-bm__veld input, .gtxxl-bm__veld select { width: 100%; max-width: none; min-height: 32px; margin: 0; }
+.gtxxl-bm__veld .is-fout { border-color: #c62828; box-shadow: 0 0 0 1px #c62828; }
+.gtxxl-bm__aflever { margin-top: 8px; }
+.gtxxl-bm__klant-knoppen { display: flex; gap: 14px; align-items: center; margin: 10px 0 0; }
+
+/* De lijst */
+.gtxxl-bm__prijs { display: inline-flex; align-items: center; gap: 4px; color: #3c4741; }
+.gtxxl-bm__prijs input { width: 78px; min-height: 30px; margin: 0; padding: 0 6px; text-align: right; }
+.gtxxl-bm__prijs.is-anders input { border-color: #d99a00; background: #fff8e5; font-weight: 600; }
+.gtxxl-bm__vast td:last-child { text-align: right; }
+.gtxxl-bm .gtxxl-wz__regels td:last-child { width: 160px; }
+.gtxxl-bm .gtxxl-wz__leeg { padding: 18px 6px; border-bottom: 0; text-align: left !important; width: auto !important; }
+
+/* Rechts */
+.gtxxl-bm__keuze label { display: block; margin: 5px 0; }
+.gtxxl-bm #gtxxl-bm-bericht { width: 100%; margin-top: 6px; }
+.gtxxl-bm__totaal { margin-top: 16px; }
+.gtxxl-bm__totaal .is-slot { margin-top: 0; padding-top: 0; border-top: 0; }
+.gtxxl-bm__totaal small { color: #7a857e; font-size: 12px; font-weight: 400; }
+#gtxxl-bm-doen { width: 100%; }
+
+@media (max-width: 860px) {
+    .gtxxl-bm { height: auto; }
+    .gtxxl-bm .gtxxl-wz__rechts, .gtxxl-bm__lijst, .gtxxl-bm__klant.is-open { overflow-y: visible; }
+    .gtxxl-bm__rij { flex-wrap: wrap; }
+    .gtxxl-bm__veld { flex-basis: 45%; }
+}

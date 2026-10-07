@@ -1,0 +1,302 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: GTXXL Bestelling maken\n"
+"Language: de_DE\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Een van de toegevoegde producten kan niet besteld worden."
+msgstr "Eines der hinzugefügten Produkte kann nicht bestellt werden."
+
+msgid "Van \"%1$s\" zijn er maar %2$d op voorraad."
+msgstr "Von „%1$s“ sind nur %2$d auf Lager."
+
+msgid "Voor dit land of gewicht staat er geen verzendtarief in de tabel."
+msgstr "Für dieses Land oder Gewicht steht kein Versandtarif in der Tabelle."
+
+msgid "Je mag geen bestellingen maken."
+msgstr "Du darfst keine Bestellungen anlegen."
+
+msgid "Kies minstens één product."
+msgstr "Wähle mindestens ein Produkt."
+
+msgid "Voor dit land of gewicht staat er geen verzendtarief in de tabel. Kies \"Geen verzendkosten\" en zet ze er daarna zelf bij."
+msgstr "Für dieses Land oder Gewicht steht kein Versandtarif in der Tabelle. Wähle „Keine Versandkosten“ und trage sie danach selbst ein."
+
+msgid "Voornaam"
+msgstr "Vorname"
+
+msgid "Achternaam"
+msgstr "Nachname"
+
+msgid "E-mailadres"
+msgstr "E-Mail-Adresse"
+
+msgid "Straat en huisnummer"
+msgstr "Straße und Hausnummer"
+
+msgid "Postcode"
+msgstr "Postleitzahl"
+
+msgid "Plaats"
+msgstr "Ort"
+
+msgid "Land"
+msgstr "Land"
+
+msgid "Vul in: %s."
+msgstr "Bitte ausfüllen: %s."
+
+msgid "Dit e-mailadres klopt niet."
+msgstr "Diese E-Mail-Adresse ist nicht korrekt."
+
+msgid "Aan dit land verkopen we niet."
+msgstr "In dieses Land verkaufen wir nicht."
+
+msgid "Vul het afleveradres helemaal in, of zet \"ander afleveradres\" uit."
+msgstr "Fülle die Lieferadresse vollständig aus oder schalte „Andere Lieferadresse“ aus."
+
+msgid "Naar dit land verzenden we niet."
+msgstr "In dieses Land versenden wir nicht."
+
+msgid "Er wordt geen btw berekend."
+msgstr "Es wird keine MwSt. berechnet."
+
+msgid "Btw-nummer genoteerd; de btw wordt berekend."
+msgstr "USt-IdNr. notiert; die MwSt. wird berechnet."
+
+msgid "Klant niet gevonden."
+msgstr "Kunde nicht gefunden."
+
+msgid "Bestelling dupliceren"
+msgstr "Bestellung duplizieren"
+
+msgid "Gedupliceerd van bestelling %s."
+msgstr "Dupliziert von Bestellung %s."
+
+msgid "Hoeft niet verzonden te worden: na betaling gaat deze bestelling direct naar \"Afgerond\" en komt ze niet in de inpaklijst."
+msgstr "Muss nicht versandt werden: Nach der Zahlung geht diese Bestellung direkt auf „Abgeschlossen“ und erscheint nicht in der Packliste."
+
+msgid "De voorraad wordt voor deze bestelling niet aangepast."
+msgstr "Der Bestand wird für diese Bestellung nicht angepasst."
+
+msgid "Snelle bestelling"
+msgstr "Schnellbestellung"
+
+msgid "Bestelling #%s dupliceren"
+msgstr "Bestellung #%s duplizieren"
+
+msgid "Bestelling maken"
+msgstr "Bestellung anlegen"
+
+msgid "Dupliceren"
+msgstr "Duplizieren"
+
+msgid "Minder"
+msgstr "Weniger"
+
+msgid "Meer"
+msgstr "Mehr"
+
+msgid "Aantal"
+msgstr "Menge"
+
+msgid "Prijs per stuk, inclusief btw"
+msgstr "Preis pro Stück, inklusive MwSt."
+
+msgid "Normaal %s"
+msgstr "Normal %s"
+
+msgid "Weghalen"
+msgstr "Entfernen"
+
+msgid "Kosten"
+msgstr "Kosten"
+
+msgid "Verzendkosten"
+msgstr "Versandkosten"
+
+msgid "Afhalen"
+msgstr "Abholung"
+
+msgid "gratis"
+msgstr "kostenlos"
+
+msgid "Even rekenen…"
+msgstr "Wird berechnet…"
+
+msgid "Er zit nog niets in de bestelling. Zoek hieronder een product."
+msgstr "In der Bestellung ist noch nichts enthalten. Suche unten ein Produkt."
+
+msgid "Kies eerst een klant."
+msgstr "Wähle zuerst einen Kunden."
+
+msgid "Totaal"
+msgstr "Summe"
+
+msgid "zonder btw"
+msgstr "ohne MwSt."
+
+msgid "Bezig…"
+msgstr "Wird ausgeführt…"
+
+msgid "Het maken van de bestelling is niet gelukt."
+msgstr "Das Anlegen der Bestellung ist fehlgeschlagen."
+
+msgid "Geen verbinding met de server. Kijk bij de bestellingen of de bestelling is gemaakt voordat je het opnieuw probeert."
+msgstr "Keine Verbindung zum Server. Prüfe bei den Bestellungen, ob die Bestellung angelegt wurde, bevor du es erneut versuchst."
+
+msgid "Het berekenen is niet gelukt."
+msgstr "Die Berechnung ist fehlgeschlagen."
+
+msgid "Klant een mail met betaallink sturen (%s)"
+msgstr "Dem Kunden eine E-Mail mit Zahlungslink senden (%s)"
+
+msgid "Klant een mail met betaallink sturen"
+msgstr "Dem Kunden eine E-Mail mit Zahlungslink senden"
+
+msgid "Zoek op naam, bedrijf, e-mail, postcode of bestelnummer…"
+msgstr "Suche nach Name, Firma, E-Mail, Postleitzahl oder Bestellnummer…"
+
+msgid "Typ minstens 2 tekens…"
+msgstr "Gib mindestens 2 Zeichen ein…"
+
+msgid "Zoeken…"
+msgstr "Suchen…"
+
+msgid "Geen klant gevonden. Kies \"Nieuwe klant\"."
+msgstr "Kein Kunde gefunden. Wähle „Neuer Kunde“."
+
+msgid "Aanpassen"
+msgstr "Ändern"
+
+msgid "Andere klant"
+msgstr "Anderer Kunde"
+
+msgid "laatste bestelling #%s"
+msgstr "letzte Bestellung #%s"
+
+msgid "nieuwe klant"
+msgstr "neuer Kunde"
+
+msgid "Afleveradres"
+msgstr "Lieferadresse"
+
+msgid "Vul de verplichte velden in (met een sterretje)."
+msgstr "Fülle die Pflichtfelder aus (mit Sternchen)."
+
+msgid "Nederlands"
+msgstr "Niederländisch"
+
+msgid "Duits"
+msgstr "Deutsch"
+
+msgid "Sluiten"
+msgstr "Schließen"
+
+msgid "Klant"
+msgstr "Kunde"
+
+msgid "Nieuwe klant"
+msgstr "Neuer Kunde"
+
+msgid "Bedrijf"
+msgstr "Firma"
+
+msgid "Telefoon"
+msgstr "Telefon"
+
+msgid "Toevoeging"
+msgstr "Adresszusatz"
+
+msgid "Taal van mails en factuur"
+msgstr "Sprache von E-Mails und Rechnung"
+
+msgid "Btw-nummer (zakelijk)"
+msgstr "USt-IdNr. (gewerblich)"
+
+msgid "Ander afleveradres"
+msgstr "Andere Lieferadresse"
+
+msgid "Deze klant gebruiken"
+msgstr "Diesen Kunden verwenden"
+
+msgid "Annuleren"
+msgstr "Abbrechen"
+
+msgid "Producten"
+msgstr "Produkte"
+
+msgid "Alleen wat is terugbetaald"
+msgstr "Nur das Erstattete"
+
+msgid "Alles terugzetten"
+msgstr "Alles zurücksetzen"
+
+msgid "Product toevoegen"
+msgstr "Produkt hinzufügen"
+
+msgid "Zoek op naam of artikelnummer…"
+msgstr "Nach Name oder Artikelnummer suchen…"
+
+msgid "Wat uit de oude bestelling komt, houdt de prijs die de klant destijds betaalde; wat je toevoegt, krijgt de prijs van nu. De prijs per stuk kun je aanpassen."
+msgstr "Was aus der alten Bestellung kommt, behält den Preis, den der Kunde damals bezahlt hat; was du hinzufügst, erhält den aktuellen Preis. Den Preis pro Stück kannst du anpassen."
+
+msgid "Producten krijgen de prijs van nu; de prijs per stuk kun je aanpassen. De bestelling krijgt de status \"Wachtend op betaling\"."
+msgstr "Produkte erhalten den aktuellen Preis; den Preis pro Stück kannst du anpassen. Die Bestellung erhält den Status „Zahlung ausstehend“."
+
+msgid "Levering"
+msgstr "Lieferung"
+
+msgid "Verzenden (kosten automatisch berekend)"
+msgstr "Versand (Kosten automatisch berechnet)"
+
+msgid "Afhalen in de winkel"
+msgstr "Abholung im Laden"
+
+msgid "Geen verzendkosten"
+msgstr "Keine Versandkosten"
+
+msgid "Bestelling hoeft niet meer verzonden te worden"
+msgstr "Bestellung muss nicht mehr versandt werden"
+
+msgid "Na betaling gaat ze direct naar \"Afgerond\" en komt ze niet bij de inpakkers."
+msgstr "Nach der Zahlung geht sie direkt auf „Abgeschlossen“ und erscheint nicht bei den Packern."
+
+msgid "Voorraad"
+msgstr "Bestand"
+
+msgid "Afboeken als de bestelling betaald is"
+msgstr "Abbuchen, wenn die Bestellung bezahlt ist"
+
+msgid "Nu al afboeken"
+msgstr "Jetzt schon abbuchen"
+
+msgid "Niet aanpassen"
+msgstr "Nicht anpassen"
+
+msgid "Betaling"
+msgstr "Zahlung"
+
+msgid "Bericht aan de klant (optioneel)…"
+msgstr "Nachricht an den Kunden (optional)…"
+
+msgid "Bestelling niet gevonden."
+msgstr "Bestellung nicht gefunden."
+
+msgid "Betaalverzoek"
+msgstr "Zahlungsaufforderung"
+
+msgid "Gaat naar de klant als je bij een snelle bestelling of bij \"Bestelling dupliceren\" kiest voor een mail met betaallink: wat er in de bestelling zit, het bedrag en de knop om te betalen."
+msgstr "Geht an den Kunden, wenn du bei einer Schnellbestellung oder bei „Bestellung duplizieren“ eine E-Mail mit Zahlungslink wählst: was in der Bestellung enthalten ist, der Betrag und der Button zum Bezahlen."
+
+msgid "Ingeschakeld"
+msgstr "Aktiviert"
+
+msgid "Deze e-mailmelding inschakelen"
+msgstr "Diese E-Mail-Benachrichtigung aktivieren"
+
+msgid "E-mailtype"
+msgstr "E-Mail-Typ"
