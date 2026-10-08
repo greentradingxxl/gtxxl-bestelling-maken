@@ -227,7 +227,42 @@
         $form.find( '.gtxxl-bm__aflever' ).toggle( $form.find( '[data-veld="ander"]' ).is( ':checked' ) );
         $form.show();
         tekenKlant();
+        controleerBtw();
         $form.find( 'input' ).first().trigger( 'focus' );
+    }
+
+    // Het btw-nummer controleren terwijl de klant wordt ingevuld: de uitkomst komt direct onder het veld, zoals bij
+    // het afrekenen. Naam, adres en land tellen mee, dus ook een wijziging daarin vraagt opnieuw na.
+    var btwTimer = null, btwNr = 0, $btwUitkomst = null;
+    function controleerBtw() {
+        clearTimeout( btwTimer );
+        var nr = ++btwNr, velden = {};
+        $form.find( '[data-veld]' ).each( function () {
+            velden[ $( this ).data( 'veld' ) ] = 'checkbox' === this.type ? ( this.checked ? '1' : '' ) : $.trim( $( this ).val() || '' );
+        } );
+        if ( ! $btwUitkomst ) {
+            $btwUitkomst = $( '<div class="gtxxl-bm__btwcheck"></div>' ).insertAfter( $form.find( '[data-veld="btw"]' ).closest( '.gtxxl-bm__rij' ) );
+        }
+        if ( ! velden.btw ) {
+            $btwUitkomst.hide().empty();
+            return;
+        }
+        $btwUitkomst.attr( 'class', 'gtxxl-bm__btwcheck is-bezig' ).text( t( 'btwBezig' ) ).show();
+        btwTimer = setTimeout( function () {
+            $.post( G.ajax, { action: 'gtxxl_maak_btw', nonce: G.nonce, klant: velden, levering: levering } ).done( function ( antwoord ) {
+                if ( nr !== btwNr ) { return; }
+                if ( ! antwoord || ! antwoord.success || ! antwoord.data || ! antwoord.data.tekst ) {
+                    $btwUitkomst.hide().empty();
+                    return;
+                }
+                $btwUitkomst.attr( 'class', 'gtxxl-bm__btwcheck is-' + antwoord.data.soort ).empty().append( $( '<span></span>' ).text( antwoord.data.tekst ) );
+                if ( antwoord.data.naam ) {
+                    $btwUitkomst.append( ' ' ).append( $( '<button type="button" class="button-link gtxxl-bm__btwnaam"></button>' ).text( tp( 'btwNaam', antwoord.data.naam ) ).data( 'naam', antwoord.data.naam ) );
+                }
+            } ).fail( function () {
+                if ( nr === btwNr ) { $btwUitkomst.hide().empty(); }
+            } );
+        }, 700 );
     }
 
     function leesForm() {
@@ -476,5 +511,10 @@
         } );
         $form.on( 'input change', '[data-veld]', function () { $( this ).removeClass( 'is-fout' ); } );
         $form.on( 'change', '[data-veld="ander"]', function () { $form.find( '.gtxxl-bm__aflever' ).toggle( this.checked ); } );
+        $form.on( 'input change', '[data-veld="btw"], [data-veld="bedrijf"], [data-veld="adres"], [data-veld="postcode"], [data-veld="plaats"], [data-veld="land"], [data-veld="ander"], [data-veld="a_land"]', controleerBtw );
+        $form.on( 'click', '.gtxxl-bm__btwnaam', function () {
+            $form.find( '[data-veld="bedrijf"]' ).val( $( this ).data( 'naam' ) ).removeClass( 'is-fout' );
+            controleerBtw();
+        } );
     } );
 } )( jQuery );

@@ -58,3 +58,10 @@
     .gtxxl-bm__rij { flex-wrap: wrap; }
     .gtxxl-bm__veld { flex-basis: 45%; }
 }
+
+/* De uitkomst van de controle van het btw-nummer, direct onder het veld. */
+.gtxxl-bm__btwcheck { margin: -2px 0 8px; padding: 6px 10px; border-radius: 4px; background: #f0f0f1; color: #50575e; font-size: 12px; line-height: 1.5; }
+.gtxxl-bm__btwcheck.is-ok { background: #e7f4ea; color: #1e6b32; }
+.gtxxl-bm__btwcheck.is-info { background: #fff8e5; color: #8a5a00; }
+.gtxxl-bm__btwcheck.is-error { background: #fbeaea; color: #b32d2e; }
+.gtxxl-bm__btwcheck .button-link { font-size: 12px; font-weight: 600; }

@@ -24,6 +24,7 @@ class GTXXL_Maken_Klant {
     public static function init(): void {
         add_action( 'wp_ajax_gtxxl_maak_zoek_klant', [ __CLASS__, 'ajax_zoek' ] );
         add_action( 'wp_ajax_gtxxl_maak_klant', [ __CLASS__, 'ajax_klant' ] );
+        add_action( 'wp_ajax_gtxxl_maak_btw', [ __CLASS__, 'ajax_btw' ] );
     }
 
     /** De landen waar de winkel aan verkoopt: [ code => naam ]. */
@@ -200,15 +201,22 @@ class GTXXL_Maken_Klant {
             $klant->update_meta_data( '_billing_vat', $v['btw'] );
             // De controle van de btw-plugin, als die aanstaat: dezelfde regels als bij het afrekenen.
             if ( function_exists( 'gtxxl_btw_evaluate' ) ) {
-                $oordeel = gtxxl_btw_evaluate( $v['btw'], $v['bedrijf'], $klant->get_shipping_country(), 'afhalen' === $levering ? [ 'local_pickup' ] : [], $vers, $v['land'] );
+                // Met het factuuradres erbij: de belastingdienst bevestigt het nummer alleen samen met naam en adres.
+                $oordeel = gtxxl_btw_evaluate( $v['btw'], $v['bedrijf'], $klant->get_shipping_country(), 'afhalen' === $levering ? [ 'local_pickup' ] : [], $vers, $v['land'], [ 'city' => $v['plaats'], 'postcode' => $v['postcode'], 'street' => $v['adres'] ] );
                 $check   = (array) ( $oordeel['check'] ?? [] );
                 $klant->update_meta_data( 'is_vat_exempt', ! empty( $oordeel['exempt'] ) ? 'yes' : 'no' );
                 if ( ! empty( $check['full'] ) ) {
                     $klant->update_meta_data( '_billing_vat', $check['full'] );
                     $klant->update_meta_data( '_gtxxl_btw_exempt', ! empty( $oordeel['exempt'] ) ? 'yes' : 'no' );
                     $klant->update_meta_data( '_gtxxl_btw_reason', (string) ( $oordeel['reason'] ?? '' ) );
-                    foreach ( [ 'status', 'name', 'address', 'request_id', 'checked_at' ] as $deel ) {
+                    foreach ( [ 'status', 'name', 'address', 'request_id', 'checked_at', 'source' ] as $deel ) {
                         $klant->update_meta_data( '_gtxxl_btw_' . $deel, (string) ( $check[ $deel ] ?? '' ) );
+                    }
+                    // Het antwoord van het BZSt met wat er is ingestuurd: het bewijs van de bevestiging, zoals de
+                    // kassa het ook bij de bestelling bewaart (voor het bewijsblad).
+                    $bzst = isset( $check['bzst'] ) && is_array( $check['bzst'] ) ? $check['bzst'] : [];
+                    if ( ! empty( $bzst['code'] ) ) {
+                        $klant->update_meta_data( '_gtxxl_btw_bzst', [ 'code' => (string) $bzst['code'], 'qualified' => ! empty( $bzst['qualified'] ), 'match' => (array) ( $bzst['match'] ?? [] ), 'sent' => (array) ( $bzst['sent'] ?? [] ), 'raw' => (array) ( $bzst['raw'] ?? [] ) ] );
                     }
                 }
                 $klant->update_meta_data( '_gtxxl_maken_btw_tekst', wp_strip_all_tags( (string) ( $oordeel['message'] ?? '' ) ) );
@@ -244,6 +252,41 @@ class GTXXL_Maken_Klant {
     }
 
     /** De gegevens van de gekozen klant (uit zijn nieuwste bestelling), om het formulier mee te vullen. */
+    /**
+     * Controleert het btw-nummer terwijl de klant wordt ingevuld, met wat er op dat moment in het formulier staat.
+     * Dezelfde controle als bij het afrekenen; het antwoord is wat er onder het veld komt te staan.
+     */
+    public static function ajax_btw(): void {
+        check_ajax_referer( 'gtxxl_maken', 'nonce' );
+        if ( ! GTXXL_Maken::mag() ) {
+            wp_send_json_error();
+        }
+        $ruw = (array) wp_unslash( $_POST['klant'] ?? [] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        $v   = [];
+        foreach ( [ 'btw', 'bedrijf', 'adres', 'postcode', 'plaats', 'land', 'ander', 'a_land' ] as $veld ) {
+            $v[ $veld ] = trim( sanitize_text_field( (string) ( $ruw[ $veld ] ?? '' ) ) );
+        }
+        if ( '' === $v['btw'] || ! function_exists( 'gtxxl_btw_evaluate' ) ) {
+            wp_send_json_success( [ 'tekst' => '' ] );
+        }
+        $naar    = '' !== $v['ander'] && '' !== $v['a_land'] ? $v['a_land'] : $v['land'];
+        $afhalen = 'afhalen' === sanitize_key( wp_unslash( $_POST['levering'] ?? '' ) );
+        $oordeel = gtxxl_btw_evaluate( $v['btw'], $v['bedrijf'], $naar, $afhalen ? [ 'local_pickup' ] : [], false, $v['land'], [ 'city' => $v['plaats'], 'postcode' => $v['postcode'], 'street' => $v['adres'] ] );
+        $vrij    = ! empty( $oordeel['exempt'] );
+        $tekst   = wp_strip_all_tags( (string) ( $oordeel['message'] ?? '' ) );
+        if ( '' === $tekst ) {
+            $tekst = $vrij ? __( 'Er wordt geen btw berekend.', 'gtxxl-maken' ) : __( 'Btw-nummer genoteerd; de btw wordt berekend.', 'gtxxl-maken' );
+        }
+
+        wp_send_json_success( [
+            'vrij'  => $vrij,
+            'soort' => $vrij ? 'ok' : ( 'error' === ( $oordeel['type'] ?? '' ) ? 'error' : 'info' ),
+            'tekst' => $tekst,
+            // De naam waarop het nummer staat, als die afwijkt van wat is ingevuld.
+            'naam'  => wp_strip_all_tags( (string) ( $oordeel['suggest'] ?? '' ) ),
+        ] );
+    }
+
     public static function ajax_klant(): void {
         check_ajax_referer( 'gtxxl_maken', 'nonce' );
         $order = wc_get_order( absint( $_POST['order_id'] ?? 0 ) );

@@ -300,3 +300,9 @@ msgstr "Diese E-Mail-Benachrichtigung aktivieren"
 
 msgid "E-mailtype"
 msgstr "E-Mail-Typ"
+
+msgid "Btw-nummer wordt gecontroleerd…"
+msgstr "USt-IdNr. wird geprüft…"
+
+msgid "Naam overnemen: %s"
+msgstr "Namen übernehmen: %s"

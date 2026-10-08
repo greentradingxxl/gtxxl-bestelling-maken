@@ -363,7 +363,7 @@ class GTXXL_Maken {
             $nieuw->set_prices_include_tax( $klant->get_prices_include_tax() );
             // De betaalwijze gaat niet mee: die kiest de klant pas op de betaalpagina.
             // Taal en btw-gegevens van de klant, zodat mails, betaalpagina en btw kloppen.
-            foreach ( [ 'wpml_language', 'is_vat_exempt', '_billing_vat', '_gtxxl_btw_exempt', '_gtxxl_btw_reason', '_gtxxl_btw_status', '_gtxxl_btw_name', '_gtxxl_btw_address', '_gtxxl_btw_request_id', '_gtxxl_btw_checked_at' ] as $sleutel ) {
+            foreach ( [ 'wpml_language', 'is_vat_exempt', '_billing_vat', '_gtxxl_btw_exempt', '_gtxxl_btw_reason', '_gtxxl_btw_status', '_gtxxl_btw_name', '_gtxxl_btw_address', '_gtxxl_btw_request_id', '_gtxxl_btw_checked_at', '_gtxxl_btw_source', '_gtxxl_btw_bzst' ] as $sleutel ) {
                 $waarde = $klant->get_meta( $sleutel );
                 if ( '' !== $waarde && null !== $waarde ) {
                     $nieuw->update_meta_data( $sleutel, $waarde );

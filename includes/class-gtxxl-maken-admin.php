@@ -123,6 +123,9 @@ class GTXXL_Maken_Admin {
                 'mislukt'      => __( 'Het maken van de bestelling is niet gelukt.', 'gtxxl-maken' ),
                 'geenVerb'     => __( 'Geen verbinding met de server. Kijk bij de bestellingen of de bestelling is gemaakt voordat je het opnieuw probeert.', 'gtxxl-maken' ),
                 'rekenFout'    => __( 'Het berekenen is niet gelukt.', 'gtxxl-maken' ),
+                'btwBezig'     => __( 'Btw-nummer wordt gecontroleerd…', 'gtxxl-maken' ),
+                /* translators: %s: bedrijfsnaam waarop het btw-nummer staat */
+                'btwNaam'      => __( 'Naam overnemen: %s', 'gtxxl-maken' ),
                 /* translators: %s: e-mailadres */
                 'mailNaar'     => __( 'Klant een mail met betaallink sturen (%s)', 'gtxxl-maken' ),
                 'mailZonder'   => __( 'Klant een mail met betaallink sturen', 'gtxxl-maken' ),
