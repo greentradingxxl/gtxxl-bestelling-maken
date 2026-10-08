@@ -285,7 +285,7 @@ class GTXXL_Maken {
                 ? [ 'kan' => true, 'naam' => wp_strip_all_tags( (string) $prijs['label'] ), 'gewicht' => $gewicht ] + $prijs
                 : [ 'kan' => false, 'reden' => __( 'Voor dit land of gewicht staat er geen verzendtarief in de tabel.', 'gtxxl-maken' ), 'netto' => 0.0, 'tax' => [], 'bruto' => 0.0 ];
             // De substratentoeslag hoort bij verzenden; bij afhalen is ze er niet.
-            $per = function_exists( 'get_field' ) ? (float) ( get_field( 'product_additional_cost_value', 'option' ) ?: 4 ) : 0.0;
+            $per = function_exists( 'gtxxl_bijkomende_kosten' ) ? (float) gtxxl_bijkomende_kosten()['per'] : 0.0;
             if ( $toeslag_stuks > 0 && $per > 0 ) {
                 $netto = $per * $toeslag_stuks;
                 $tax   = [];
