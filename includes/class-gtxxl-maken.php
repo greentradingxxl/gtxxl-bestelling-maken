@@ -73,7 +73,7 @@ class GTXXL_Maken {
     }
 
     private static function is_toeslag( WC_Order_Item_Fee $fee ): bool {
-        return (bool) preg_match( '/substrat|toeslag|zuschlag|bags fee/i', (string) $fee->get_name() );
+        return GTXXL_Wijzigen_Plan::is_toeslag_naam( (string) $fee->get_name() );
     }
 
     /* ------------------------------------------------------------------ */
@@ -294,7 +294,7 @@ class GTXXL_Maken {
                         $tax[ (int) $id ] = (float) wc_round_tax_total( $bedrag );
                     }
                 }
-                $toeslag = [ 'naam' => $nl ? 'Substraten toeslag' : 'Substratzuschlag', 'stuks' => $toeslag_stuks, 'netto' => $netto, 'tax' => $tax, 'bruto' => round( $netto + array_sum( $tax ), 2 ) ];
+                $toeslag = [ 'naam' => GTXXL_Wijzigen_Plan::toeslag_naam( $nl ), 'stuks' => $toeslag_stuks, 'netto' => $netto, 'tax' => $tax, 'bruto' => round( $netto + array_sum( $tax ), 2 ) ];
             }
         } elseif ( $regels && 'afhalen' === $levering ) {
             $verzend = [ 'kan' => true, 'afhalen' => true, 'naam' => $nl ? 'Afhalen bij Green Trading XXL' : 'Abholung bei Green Trading XXL', 'netto' => 0.0, 'tax' => [], 'bruto' => 0.0, 'gewicht' => $gewicht ];
