@@ -191,6 +191,21 @@ class GTXXL_Maken {
      * @return array|WP_Error
      */
     public static function plan( WC_Order $klant, ?WC_Order $origineel, array $in ) {
+        // De levering staat nog niet in een bestelling; voor de btw telt of er wordt afgehaald (btw van de winkel).
+        $vast = property_exists( 'GTXXL_Wijzigen_Plan', 'afhalen_vast' );
+        if ( $vast ) {
+            GTXXL_Wijzigen_Plan::$afhalen_vast = 'afhalen' === ( $in['levering'] ?? '' );
+        }
+        try {
+            return self::plan_reken( $klant, $origineel, $in );
+        } finally {
+            if ( $vast ) {
+                GTXXL_Wijzigen_Plan::$afhalen_vast = null;
+            }
+        }
+    }
+
+    private static function plan_reken( WC_Order $klant, ?WC_Order $origineel, array $in ) {
         $levering = in_array( $in['levering'] ?? '', [ 'verzenden', 'afhalen' ], true ) ? $in['levering'] : 'geen';
         $nl       = 'nl' === $klant->get_meta( 'wpml_language' );
         $regels   = [];
@@ -214,8 +229,10 @@ class GTXXL_Maken {
             if ( null !== $prijs && abs( $prijs - $standaard ) >= 0.005 ) {
                 $deel = self::uit_bruto( $klant, (string) $item->get_tax_class(), 'taxable' === $item->get_tax_status(), $prijs * $aantal );
             } else {
+                // Dezelfde prijs als toen, met de btw van nu: het tarief kan sinds de oorspronkelijke bestelling
+                // veranderd zijn (btw van het land van de klant).
                 $prijs = $standaard;
-                $deel  = [ 'netto' => $per * $aantal, 'tax' => array_map( static function ( $b ) use ( $aantal ) { return $b * $aantal; }, $per_tax ) ];
+                $deel  = self::uit_bruto( $klant, (string) $item->get_tax_class(), 'taxable' === $item->get_tax_status(), ( $per + array_sum( $per_tax ) ) * $aantal );
             }
             $regels[] = [ 'sleutel' => 'r' . (int) $item_id, 'item' => $item, 'product' => $product, 'naam' => wp_strip_all_tags( $item->get_name() ), 'sku' => $product ? (string) $product->get_sku() : '', 'aantal' => $aantal, 'stuk' => $prijs, 'standaard' => $standaard, 'tax_class' => (string) $item->get_tax_class() ] + $deel + GTXXL_Wijzigen_Plan::foto( $product );
             $gewicht += self::gewicht( $product, $aantal );
