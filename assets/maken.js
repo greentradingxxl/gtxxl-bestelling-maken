@@ -507,7 +507,15 @@
         } );
         $form.on( 'change', '[data-veld="land"]', function () {
             var code = $( this ).val();
-            $.each( G.landen, function ( i, l ) { if ( l.code === code ) { $form.find( '[data-veld="taal"]' ).val( l.taal ); } } );
+            $.each( G.landen, function ( i, l ) {
+                if ( l.code !== code ) { return; }
+                $form.find( '[data-veld="taal"]' ).val( l.taal );
+                // Een factuuradres in een land waar we niet naar verzenden: meteen het afleveradres openen.
+                if ( ! l.verzend ) {
+                    $form.find( '[data-veld="ander"]' ).prop( 'checked', true );
+                    $form.find( '.gtxxl-bm__aflever' ).show();
+                }
+            } );
         } );
         $form.on( 'input change', '[data-veld]', function () { $( this ).removeClass( 'is-fout' ); } );
         $form.on( 'change', '[data-veld="ander"]', function () { $form.find( '.gtxxl-bm__aflever' ).toggle( this.checked ); } );

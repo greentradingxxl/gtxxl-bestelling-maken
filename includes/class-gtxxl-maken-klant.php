@@ -27,9 +27,18 @@ class GTXXL_Maken_Klant {
         add_action( 'wp_ajax_gtxxl_maak_btw', [ __CLASS__, 'ajax_btw' ] );
     }
 
-    /** De landen waar de winkel aan verkoopt: [ code => naam ]. */
+    /** De landen waar de winkel aan verkoopt en naar verzendt: [ code => naam ]. */
     public static function landen(): array {
         return (array) WC()->countries->get_allowed_countries();
+    }
+
+    /**
+     * De landen die als factuuradres mogen: de verkooplanden eerst, daarna alle andere landen. Een klant met een
+     * factuuradres buiten de verkooplanden (bijvoorbeeld in Zwitserland) krijgt de bestelling op een afleveradres in
+     * een verkoopland, of haalt af in de winkel.
+     */
+    public static function factuurlanden(): array {
+        return self::landen() + (array) WC()->countries->get_countries();
     }
 
     public static function taal_van_land( string $land ): string {
@@ -132,9 +141,12 @@ class GTXXL_Maken_Klant {
     /**
      * Leest en controleert de klantvelden uit een aanroep.
      *
+     * @param array  $ruw      De velden uit het venster.
+     * @param string $levering verzenden, afhalen of geen: bij afhalen hoeft een factuuradres buiten de verkooplanden
+     *                         geen afleveradres.
      * @return array|WP_Error
      */
-    public static function lees( array $ruw ) {
+    public static function lees( array $ruw, string $levering = '' ) {
         $v = [];
         foreach ( array_keys( self::VELDEN ) as $veld ) {
             $v[ $veld ] = trim( sanitize_text_field( (string) ( $ruw[ $veld ] ?? '' ) ) );
@@ -162,8 +174,16 @@ class GTXXL_Maken_Klant {
         if ( ! is_email( $v['email'] ) ) {
             return new WP_Error( 'email', __( 'Dit e-mailadres klopt niet.', 'gtxxl-maken' ) );
         }
-        if ( ! isset( $landen[ $v['land'] ] ) ) {
-            return new WP_Error( 'land', __( 'Aan dit land verkopen we niet.', 'gtxxl-maken' ) );
+        $factuur = self::factuurlanden();
+        if ( ! isset( $factuur[ $v['land'] ] ) ) {
+            return new WP_Error( 'land', __( 'Kies een land bij het factuuradres.', 'gtxxl-maken' ) );
+        }
+        if ( ! isset( $landen[ $v['land'] ] ) && ! $v['ander'] && 'afhalen' !== $levering ) {
+            return new WP_Error( 'land', sprintf(
+                /* translators: %s: land van het factuuradres */
+                __( 'Naar %s verzenden we niet. Zet "Ander afleveradres" aan en vul een adres in een land in waar we naar verzenden, of kies afhalen in de winkel.', 'gtxxl-maken' ),
+                html_entity_decode( (string) $factuur[ $v['land'] ], ENT_QUOTES, 'UTF-8' )
+            ) );
         }
         if ( $v['ander'] ) {
             foreach ( [ 'a_adres', 'a_postcode', 'a_plaats', 'a_land' ] as $veld ) {

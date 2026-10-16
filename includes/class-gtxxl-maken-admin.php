@@ -74,8 +74,9 @@ class GTXXL_Maken_Admin {
         GTXXL_Wijzigen_Zoeker::script( $order );
         wp_enqueue_script( 'gtxxl-maken', GTXXL_MAKEN_URL . 'assets/maken.js', [ 'jquery', 'wc-enhanced-select', 'gtxxl-wijzigen-zoeker' ], (string) filemtime( GTXXL_MAKEN_PATH . 'assets/maken.js' ), true );
         $landen = [];
-        foreach ( GTXXL_Maken_Klant::landen() as $code => $naam ) {
-            $landen[] = [ 'code' => $code, 'naam' => html_entity_decode( (string) $naam, ENT_QUOTES, 'UTF-8' ), 'taal' => GTXXL_Maken_Klant::taal_van_land( $code ) ];
+        $verzend = GTXXL_Maken_Klant::landen();
+        foreach ( GTXXL_Maken_Klant::factuurlanden() as $code => $naam ) {
+            $landen[] = [ 'code' => $code, 'naam' => html_entity_decode( (string) $naam, ENT_QUOTES, 'UTF-8' ), 'taal' => GTXXL_Maken_Klant::taal_van_land( $code ), 'verzend' => isset( $verzend[ $code ] ) ];
         }
         wp_localize_script( 'gtxxl-maken', 'gtxxlMaken', [
             'ajax'     => admin_url( 'admin-ajax.php' ),
@@ -157,10 +158,26 @@ class GTXXL_Maken_Admin {
         );
     }
 
-    private static function landveld( string $naam, string $label, bool $verplicht ): void {
+    /**
+     * Een keuzelijst met landen. Bij het factuuradres ($alle) staan onder de verkooplanden ook alle andere landen;
+     * het afleveradres kan alleen een land zijn waar we naar verzenden.
+     */
+    private static function landveld( string $naam, string $label, bool $verplicht, bool $alle = false ): void {
+        $opties = function ( array $landen ): string {
+            $html = '';
+            foreach ( $landen as $code => $land ) {
+                $html .= '<option value="' . esc_attr( $code ) . '">' . esc_html( html_entity_decode( (string) $land, ENT_QUOTES, 'UTF-8' ) ) . '</option>';
+            }
+
+            return $html;
+        };
         echo '<label class="gtxxl-bm__veld"><span>' . esc_html( $label ) . ( $verplicht ? ' *' : '' ) . '</span><select data-veld="' . esc_attr( $naam ) . '">';
-        foreach ( GTXXL_Maken_Klant::landen() as $code => $land ) {
-            echo '<option value="' . esc_attr( $code ) . '">' . esc_html( html_entity_decode( (string) $land, ENT_QUOTES, 'UTF-8' ) ) . '</option>';
+        if ( $alle ) {
+            $verkoop = GTXXL_Maken_Klant::landen();
+            echo '<optgroup label="' . esc_attr( __( 'Landen waar we naar verzenden', 'gtxxl-maken' ) ) . '">' . $opties( $verkoop ) . '</optgroup>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+            echo '<optgroup label="' . esc_attr( __( 'Overige landen (alleen factuuradres)', 'gtxxl-maken' ) ) . '">' . $opties( array_diff_key( GTXXL_Maken_Klant::factuurlanden(), $verkoop ) ) . '</optgroup>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        } else {
+            echo $opties( GTXXL_Maken_Klant::landen() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
         }
         echo '</select></label>';
     }
@@ -210,7 +227,7 @@ class GTXXL_Maken_Admin {
                                     <?php
                                     self::veld( 'postcode', __( 'Postcode', 'gtxxl-maken' ), true );
                                     self::veld( 'plaats', __( 'Plaats', 'gtxxl-maken' ), true );
-                                    self::landveld( 'land', __( 'Land', 'gtxxl-maken' ), true );
+                                    self::landveld( 'land', __( 'Land', 'gtxxl-maken' ), true, true );
                                     ?>
                                 </div>
                                 <div class="gtxxl-bm__rij">
@@ -343,7 +360,7 @@ class GTXXL_Maken_Admin {
         $in['aantallen']      = [];
         $in['overig']         = [];
         $in['niet_verzenden'] = false;
-        $velden = GTXXL_Maken_Klant::lees( (array) wp_unslash( $_POST['klant'] ?? [] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        $velden = GTXXL_Maken_Klant::lees( (array) wp_unslash( $_POST['klant'] ?? [] ), $in['levering'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
         if ( is_wp_error( $velden ) ) {
             wp_send_json_error( [ 'code' => 'klant', 'tekst' => $velden->get_error_message() ] );
         }

@@ -306,3 +306,15 @@ msgstr "USt-IdNr. wird geprüft…"
 
 msgid "Naam overnemen: %s"
 msgstr "Namen übernehmen: %s"
+
+msgid "Kies een land bij het factuuradres."
+msgstr "Wähle ein Land bei der Rechnungsadresse."
+
+msgid "Naar %s verzenden we niet. Zet \"Ander afleveradres\" aan en vul een adres in een land in waar we naar verzenden, of kies afhalen in de winkel."
+msgstr "Nach %s versenden wir nicht. Aktiviere „Andere Lieferadresse“ und gib eine Adresse in einem Land ein, in das wir versenden, oder wähle Abholung im Laden."
+
+msgid "Landen waar we naar verzenden"
+msgstr "Länder, in die wir versenden"
+
+msgid "Overige landen (alleen factuuradres)"
+msgstr "Andere Länder (nur Rechnungsadresse)"
