@@ -65,3 +65,31 @@
 .gtxxl-bm__btwcheck.is-info { background: #fff8e5; color: #8a5a00; }
 .gtxxl-bm__btwcheck.is-error { background: #fbeaea; color: #b32d2e; }
 .gtxxl-bm__btwcheck .button-link { font-size: 12px; font-weight: 600; }
+
+/* Telefoon: het venster vult het scherm en een productregel staat op twee regels (naam boven, prijs en aantal eronder),
+   zodat de knoppen niet buiten beeld vallen. */
+@media (max-width: 600px) {
+    #gtxxl-bm-overlay { padding: 8px; }
+    .gtxxl-bm .gtxxl-wz__kop { padding: 12px 16px; }
+    .gtxxl-bm .gtxxl-wz__links, .gtxxl-bm .gtxxl-wz__rechts { padding: 14px 16px 18px; }
+    .gtxxl-bm__klant-kaart { flex-direction: column; gap: 8px; }
+    .gtxxl-bm__klant-links { flex-direction: row; gap: 18px; align-items: center; }
+    .gtxxl-bm__klant-zoek { flex-wrap: wrap; }
+    .gtxxl-bm__klant-zoek .select2-container { flex-basis: 100%; }
+    .gtxxl-bm__veld, .gtxxl-bm__veld.is-breed { flex-basis: 100%; }
+
+    .gtxxl-bm .gtxxl-wz__regels, .gtxxl-bm .gtxxl-wz__regels tbody { display: block; }
+    .gtxxl-bm .gtxxl-wz__regel { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; grid-template-areas: "foto naam naam" "foto prijs aantal"; gap: 8px 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid #edf0ee; }
+    .gtxxl-bm .gtxxl-wz__regel td { display: block; padding: 0; border: 0; width: auto !important; }
+    .gtxxl-bm .gtxxl-wz__regel .gtxxl-wz__foto { grid-area: foto; align-self: start; }
+    .gtxxl-bm .gtxxl-wz__regel .gtxxl-wz__naam { grid-area: naam; }
+    .gtxxl-bm .gtxxl-wz__regel .gtxxl-wz__prijs { grid-area: prijs; justify-self: start; text-align: left; }
+    .gtxxl-bm .gtxxl-wz__regel td:last-child { grid-area: aantal; justify-self: end; }
+    /* Verzendkosten, toeslag en vaste kosten: één regel, het bedrag rechts. */
+    .gtxxl-bm .gtxxl-wz__regel.gtxxl-bm__vast { grid-template-columns: 44px minmax(0, 1fr) auto auto; grid-template-areas: "foto naam prijs aantal"; }
+    .gtxxl-bm .gtxxl-wz__regel.gtxxl-bm__vast .gtxxl-wz__prijs { justify-self: end; }
+    .gtxxl-bm .gtxxl-wz__regels tr:not(.gtxxl-wz__regel) td { display: block; }
+    .gtxxl-bm .gtxxl-wz__aantal .button { min-width: 36px; min-height: 36px; }
+    .gtxxl-bm .gtxxl-wz__aantal input { width: 48px; min-height: 36px; }
+    .gtxxl-bm__prijs input { width: 84px; min-height: 36px; }
+}
