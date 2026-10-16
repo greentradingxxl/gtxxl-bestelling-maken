@@ -112,6 +112,7 @@ class GTXXL_Maken_Admin {
                 'verwijder'    => __( 'Weghalen', 'gtxxl-maken' ),
                 'kosten'       => __( 'Kosten', 'gtxxl-maken' ),
                 'verzendkosten' => __( 'Verzendkosten', 'gtxxl-maken' ),
+                'verzendPrijs' => __( 'Verzendkosten, inclusief btw (leeg = automatisch)', 'gtxxl-maken' ),
                 'afhalen'      => __( 'Afhalen', 'gtxxl-maken' ),
                 'gratis'       => __( 'gratis', 'gtxxl-maken' ),
                 'rekenen'      => __( 'Even rekenen…', 'gtxxl-maken' ),
@@ -344,6 +345,8 @@ class GTXXL_Maken_Admin {
             'extra'          => $lijst( 'extra' ),
             'overig'         => array_map( 'absint', (array) wp_unslash( $_POST['overig'] ?? [] ) ),
             'levering'       => sanitize_key( wp_unslash( $_POST['levering'] ?? 'geen' ) ),
+            // Zelf ingevulde verzendkosten inclusief btw; leeg = de kosten uit de verzendtabel.
+            'verzend_prijs'  => '' === trim( (string) wp_unslash( $_POST['verzend_prijs'] ?? '' ) ) ? null : max( 0.0, min( 99999.0, (float) str_replace( ',', '.', (string) wp_unslash( $_POST['verzend_prijs'] ) ) ) ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
             'niet_verzenden' => '1' === (string) ( $_POST['niet_verzenden'] ?? '0' ),
             'voorraad'       => sanitize_key( wp_unslash( $_POST['voorraad'] ?? '' ) ),
             'mail'           => '1' === (string) ( $_POST['mail'] ?? '0' ),
@@ -385,7 +388,7 @@ class GTXXL_Maken_Admin {
         $v = $plan['verzend'];
         wp_send_json_success( [
             'regels'    => $regels,
-            'verzend'   => $v ? [ 'kan' => ! empty( $v['kan'] ), 'afhalen' => ! empty( $v['afhalen'] ), 'naam' => (string) ( $v['naam'] ?? '' ), 'reden' => (string) ( $v['reden'] ?? '' ), 'bedrag' => (float) $v['bruto'], 'gewicht' => str_replace( '.', ',', (string) round( (float) ( $v['gewicht'] ?? 0 ), 1 ) ) ] : null,
+            'verzend'   => $v ? [ 'kan' => ! empty( $v['kan'] ), 'afhalen' => ! empty( $v['afhalen'] ), 'naam' => (string) ( $v['naam'] ?? '' ), 'reden' => (string) ( $v['reden'] ?? '' ), 'bedrag' => (float) $v['bruto'], 'eigen' => ! empty( $v['eigen'] ), 'standaard' => isset( $v['standaard'] ) ? (float) $v['standaard'] : null, 'gewicht' => str_replace( '.', ',', (string) round( (float) ( $v['gewicht'] ?? 0 ), 1 ) ) ] : null,
             'toeslag'   => $plan['toeslag'] ? [ 'naam' => $plan['toeslag']['naam'], 'bedrag' => (float) $plan['toeslag']['bruto'], 'stuks' => (int) $plan['toeslag']['stuks'] ] : null,
             'totaal'    => $plan['totaal'],
             'btw_vrij'  => (bool) $plan['btw_vrij'],

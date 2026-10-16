@@ -283,7 +283,27 @@ class GTXXL_Maken {
             $prijs = GTXXL_Wijzigen_Plan::verzendprijs( $klant, $gewicht );
             $verzend = $prijs
                 ? [ 'kan' => true, 'naam' => wp_strip_all_tags( (string) $prijs['label'] ), 'gewicht' => $gewicht ] + $prijs
-                : [ 'kan' => false, 'reden' => __( 'Voor dit land of gewicht staat er geen verzendtarief in de tabel.', 'gtxxl-maken' ), 'netto' => 0.0, 'tax' => [], 'bruto' => 0.0 ];
+                : [ 'kan' => false, 'reden' => __( 'Geen verzendtarief voor dit land of gewicht; vul de verzendkosten zelf in.', 'gtxxl-maken' ), 'netto' => 0.0, 'tax' => [], 'bruto' => 0.0, 'gewicht' => $gewicht ];
+            // Zelf ingevulde verzendkosten (inclusief btw): de btw gaat eruit zoals bij verzendkosten uit de tabel.
+            $eigen = isset( $in['verzend_prijs'] ) && null !== $in['verzend_prijs'] ? round( (float) $in['verzend_prijs'], 2 ) : null;
+            if ( null !== $eigen ) {
+                $tax = [];
+                if ( wc_tax_enabled() && ! GTXXL_Wijzigen_Plan::btw_vrij( $klant ) ) {
+                    foreach ( WC_Tax::calc_tax( $eigen, WC_Tax::find_shipping_rates( GTXXL_Wijzigen_Plan::btw_plaats( $klant ) ), true ) as $id => $bedrag ) {
+                        $tax[ (int) $id ] = (float) $bedrag;
+                    }
+                }
+                $verzend = [
+                    'kan'       => true,
+                    'eigen'     => true,
+                    'naam'      => $prijs ? wp_strip_all_tags( (string) $prijs['label'] ) : ( $nl ? 'Verzending' : 'Versand' ),
+                    'gewicht'   => $gewicht,
+                    'netto'     => $eigen - array_sum( $tax ),
+                    'tax'       => $tax,
+                    'bruto'     => $eigen,
+                    'standaard' => $prijs ? (float) $prijs['bruto'] : null,
+                ];
+            }
             // De substratentoeslag hoort bij verzenden; bij afhalen is ze er niet.
             $per = function_exists( 'gtxxl_bijkomende_kosten' ) ? (float) gtxxl_bijkomende_kosten()['per'] : 0.0;
             if ( $toeslag_stuks > 0 && $per > 0 ) {

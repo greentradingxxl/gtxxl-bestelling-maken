@@ -12,6 +12,8 @@
     var modus = 'nieuw';
     // De producten in de lijst, de kostenregels van de oude bestelling (aan of uit), de levering en de klant.
     var lijnen = [], overig = {}, levering = 'verzenden', leveringVoor = 'verzenden', klant = null, klantLaatste = '';
+    // Zelf ingevulde verzendkosten (inclusief btw), of null: dan gelden de kosten uit de verzendtabel.
+    var verzendPrijs = null;
     // Wat de server voor deze keuze heeft berekend (null = nog aan het rekenen).
     var uitkomst = null, rekenTimer = null, rekenNr = 0, bezig = false;
     // De productzoeker deelt zijn instelling met het venster "Bestelling wijzigen": bij het sluiten gaat die terug.
@@ -71,7 +73,12 @@
             html += '<tr class="gtxxl-wz__regel gtxxl-bm__vast"><td class="gtxxl-wz__foto"></td>' +
                 '<td class="gtxxl-wz__naam"><strong>' + t( afhalen ? 'afhalen' : 'verzendkosten' ) + '</strong><span>' +
                     ( ! uitkomst ? t( 'rekenen' ) : ( v && v.kan ? veilig( afhalen ? v.naam : v.naam + ' · ' + v.gewicht + ' kg' ) : veilig( v ? v.reden : '' ) ) ) + '</span></td>' +
-                '<td class="gtxxl-wz__prijs">' + ( v && v.kan ? ( afhalen ? t( 'gratis' ) : veilig( geld( v.bedrag ) ) ) : '' ) + '</td>' +
+                ( afhalen || ! uitkomst || ! v
+                    ? '<td class="gtxxl-wz__prijs">' + ( afhalen && v && v.kan ? t( 'gratis' ) : '' ) + '</td>'
+                    // Verzenden: het bedrag is aan te passen, net als de prijs van een product. Leeg = weer uit de tabel.
+                    : '<td class="gtxxl-wz__prijs"><span class="gtxxl-bm__prijs' + ( v.eigen ? ' is-anders' : '' ) + '">' + veilig( G.valuta ) +
+                        '<input type="text" inputmode="decimal" data-soort="verzend" value="' + ( v.kan ? getal( v.bedrag ) : '' ) + '" aria-label="' + t( 'verzendPrijs' ) + '" title="' + t( 'verzendPrijs' ) + '"></span>' +
+                        ( v.eigen && v.standaard != null ? '<em class="gtxxl-bm__normaal">' + veilig( tp( 'normaal', geld( v.standaard ) ) ) + '</em>' : '' ) + '</td>' ) +
                 '<td>' + kruisje( 'levering', '' ) + '</td></tr>';
         } else if ( heeft ) {
             rekent = ! uitkomst;
@@ -96,7 +103,7 @@
             ( 'regel' === l.soort ? aantallen : extra )[ l.id ] = { aantal: l.aantal, prijs: l.prijs == null ? '' : l.prijs };
         } );
         $.each( overig, function ( id, aan ) { if ( aan ) { lijst.push( id ); } } );
-        var data = { nonce: G.nonce, soort: modus, aantallen: aantallen, extra: extra, overig: lijst, levering: levering };
+        var data = { nonce: G.nonce, soort: modus, aantallen: aantallen, extra: extra, overig: lijst, levering: levering, verzend_prijs: verzendPrijs == null ? '' : verzendPrijs };
         if ( 'kopie' === modus ) {
             data.order_id = G.kopie.order_id;
             data.niet_verzenden = $( '#gtxxl-bm-niet-verzenden' ).is( ':checked' ) ? '1' : '0';
@@ -298,7 +305,7 @@
     function open( nieuweModus ) {
         modus = nieuweModus;
         bezig = false;
-        lijnen = []; overig = {}; uitkomst = null; klant = null; klantLaatste = '';
+        lijnen = []; overig = {}; uitkomst = null; klant = null; klantLaatste = ''; verzendPrijs = null;
         $melding.empty();
         $form.hide();
         $overlay.find( '.gtxxl-bm__producten' ).show();
@@ -416,10 +423,17 @@
         } );
         $overlay.on( 'change', '.gtxxl-wz__aantal input', function () { zetAantal( $( this ).closest( '.gtxxl-wz__aantal' ).data( 'sleutel' ), $( this ).val() ); } );
         $overlay.on( 'change', '.gtxxl-bm__prijs input', function () {
-            var l = vind( $( this ).data( 'sleutel' ) );
-            if ( ! l ) { return; }
             var invoer = $.trim( $( this ).val() ).replace( /\s|€/g, '' ).replace( ',', '.' );
             var prijs = '' === invoer ? NaN : parseFloat( invoer );
+            if ( 'verzend' === $( this ).data( 'soort' ) ) {
+                // Leeg of onleesbaar: weer de kosten uit de verzendtabel.
+                var v = uitkomst && uitkomst.verzend;
+                verzendPrijs = isNaN( prijs ) || prijs < 0 || ( v && v.standaard != null && Math.abs( prijs - v.standaard ) < 0.005 ) ? null : Math.round( prijs * 100 ) / 100;
+                herreken();
+                return;
+            }
+            var l = vind( $( this ).data( 'sleutel' ) );
+            if ( ! l ) { return; }
             // Leeg, onleesbaar of gelijk aan de gewone prijs: terug naar de gewone prijs.
             l.prijs = isNaN( prijs ) || prijs < 0 || ( l.standaard != null && Math.abs( prijs - l.standaard ) < 0.005 ) ? null : Math.round( prijs * 100 ) / 100;
             herreken();

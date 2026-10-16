@@ -321,3 +321,9 @@ msgstr "Andere Länder (nur Rechnungsadresse)"
 
 msgid "laatste bestelling %s"
 msgstr "letzte Bestellung %s"
+
+msgid "Verzendkosten, inclusief btw (leeg = automatisch)"
+msgstr "Versandkosten inkl. MwSt. (leer = automatisch)"
+
+msgid "Geen verzendtarief voor dit land of gewicht; vul de verzendkosten zelf in."
+msgstr "Kein Versandtarif für dieses Land oder Gewicht; gib die Versandkosten selbst ein."
