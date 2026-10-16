@@ -20,6 +20,10 @@
 .gtxxl-bm__klant-zoek { display: flex; gap: 8px; align-items: flex-start; }
 .gtxxl-bm__klant-zoek .select2-container { flex: 1 1 auto; min-width: 0; }
 .gtxxl-bm__klant-zoek .button { flex: 0 0 auto; }
+/* Een treffer bij het zoeken: naam en plaats, daaronder klein het e-mailadres en de laatste bestelling. */
+.gtxxl-bm__treffer strong { display: block; font-weight: 600; }
+.gtxxl-bm__treffer small { display: block; margin-top: 1px; color: #646970; font-size: 12px; }
+.select2-results__option--highlighted .gtxxl-bm__treffer small { color: rgba(255, 255, 255, .85); }
 .gtxxl-bm__klant-kaart { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; padding: 12px 14px; border: 1px solid #dde4df; border-radius: 8px; background: #f7f9f6; }
 .gtxxl-bm__klant-tekst strong { display: block; margin-bottom: 2px; font-size: 14px; }
 .gtxxl-bm__klant-tekst span { display: block; color: #50575e; font-size: 13px; line-height: 1.5; }

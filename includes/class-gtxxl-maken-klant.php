@@ -61,10 +61,12 @@ class GTXXL_Maken_Klant {
             return [];
         }
         $ids = [];
+        $op_nummer = [];
         // Een bestelnummer: die bestelling eerst.
         if ( preg_match( '/^#?v?\d{4,}$/i', $term ) ) {
             foreach ( array_map( 'intval', (array) wc_order_search( ltrim( $term, '#' ) ) ) as $id ) {
                 $ids[] = $id;
+                $op_nummer[ $id ] = true;
                 if ( count( $ids ) >= 5 ) {
                     break;
                 }
@@ -96,14 +98,20 @@ class GTXXL_Maken_Klant {
                 continue;
             }
             $mail[ strtolower( $order->get_billing_email() ) ] = true;
-            $delen = array_filter( [
-                trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() ),
-                $order->get_billing_company(),
-                trim( $order->get_billing_postcode() . ' ' . $order->get_billing_city() . ' (' . $order->get_billing_country() . ')' ),
+            $schoon = static function ( array $delen ): string {
+                return html_entity_decode( wp_strip_all_tags( implode( ' · ', array_filter( $delen ) ) ), ENT_QUOTES, 'UTF-8' );
+            };
+            // Boven de naam en de plaats; daaronder klein het e-mailadres en wanneer de klant voor het laatst bestelde.
+            // Het bestelnummer alleen als er op een bestelnummer is gezocht.
+            $kop   = $schoon( [ trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() ), $order->get_billing_company(), trim( $order->get_billing_postcode() . ' ' . $order->get_billing_city() . ' (' . $order->get_billing_country() . ')' ) ] );
+            $datum = $order->get_date_created() ? $order->get_date_created()->date_i18n( 'd-m-Y' ) : '';
+            $sub   = $schoon( [
                 $order->get_billing_email(),
-                '#' . $order->get_order_number() . ( $order->get_date_created() ? ' · ' . $order->get_date_created()->date_i18n( 'd-m-Y' ) : '' ),
+                isset( $op_nummer[ $id ] ) ? '#' . $order->get_order_number() : '',
+                /* translators: %s: datum van de laatste bestelling */
+                '' !== $datum ? sprintf( __( 'laatste bestelling %s', 'gtxxl-maken' ), $datum ) : '',
             ] );
-            $uit[] = [ 'id' => $id, 'text' => html_entity_decode( wp_strip_all_tags( implode( ' · ', $delen ) ), ENT_QUOTES, 'UTF-8' ) ];
+            $uit[] = [ 'id' => $id, 'text' => $kop, 'kop' => $kop, 'sub' => $sub ];
         }
 
         return $uit;

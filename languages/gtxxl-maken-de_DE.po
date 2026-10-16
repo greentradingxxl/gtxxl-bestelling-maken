@@ -318,3 +318,6 @@ msgstr "Länder, in die wir versenden"
 
 msgid "Overige landen (alleen factuuradres)"
 msgstr "Andere Länder (nur Rechnungsadresse)"
+
+msgid "laatste bestelling %s"
+msgstr "letzte Bestellung %s"

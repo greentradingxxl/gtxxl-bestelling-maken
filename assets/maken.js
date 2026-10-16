@@ -472,6 +472,11 @@
                     data: function ( vraag ) { return { action: 'gtxxl_maak_zoek_klant', nonce: G.nonce, term: vraag.term }; },
                     processResults: function ( antwoord ) { return { results: antwoord && antwoord.success ? antwoord.data : [] }; }
                 },
+                // Naam en plaats boven, e-mailadres en laatste bestelling klein eronder.
+                templateResult: function ( r ) {
+                    if ( ! r.kop ) { return r.text; }
+                    return $( '<span class="gtxxl-bm__treffer"><strong>' + veilig( r.kop ) + '</strong>' + ( r.sub ? '<small>' + veilig( r.sub ) + '</small>' : '' ) + '</span>' );
+                },
                 language: {
                     inputTooShort: function () { return G.t.kort; },
                     searching: function () { return G.t.zoeken; },
