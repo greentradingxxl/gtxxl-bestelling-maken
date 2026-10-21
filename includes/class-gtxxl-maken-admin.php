@@ -301,8 +301,11 @@ class GTXXL_Maken_Admin {
                             <label><input type="radio" name="gtxxl-bm-voorraad" value="niet"> <?php echo esc_html( __( 'Niet aanpassen', 'gtxxl-maken' ) ); ?></label>
                         </div>
                         <h3><?php echo esc_html( __( 'Betaling', 'gtxxl-maken' ) ); ?></h3>
-                        <label class="gtxxl-wz__vink"><input type="checkbox" id="gtxxl-bm-mail"> <span id="gtxxl-bm-mail-tekst"></span></label>
-                        <textarea id="gtxxl-bm-bericht" rows="3" placeholder="<?php echo esc_attr( __( 'Bericht aan de klant (optioneel)…', 'gtxxl-maken' ) ); ?>"></textarea>
+                        <div id="gtxxl-bm-betaling">
+                            <label class="gtxxl-wz__vink"><input type="checkbox" id="gtxxl-bm-mail"> <span id="gtxxl-bm-mail-tekst"></span></label>
+                            <textarea id="gtxxl-bm-bericht" rows="3" placeholder="<?php echo esc_attr( __( 'Bericht aan de klant (optioneel)…', 'gtxxl-maken' ) ); ?>"></textarea>
+                        </div>
+                        <p class="gtxxl-wz__klein" id="gtxxl-bm-gratis" style="display:none;"><?php echo esc_html( __( 'Totaal € 0: er valt niets te betalen. De bestelling gaat meteen naar "In behandeling" en de klant krijgt de orderbevestiging met de factuur.', 'gtxxl-maken' ) ); ?></p>
                         <div class="gtxxl-wz__totaal gtxxl-bm__totaal"></div>
                         <div class="gtxxl-bm__melding"></div>
                         <button type="button" class="button button-primary button-large" id="gtxxl-bm-doen"></button>

@@ -327,3 +327,6 @@ msgstr "Versandkosten inkl. MwSt. (leer = automatisch)"
 
 msgid "Geen verzendtarief voor dit land of gewicht; vul de verzendkosten zelf in."
 msgstr "Kein Versandtarif für dieses Land oder Gewicht; gib die Versandkosten selbst ein."
+
+msgid "Totaal € 0: er valt niets te betalen. De bestelling gaat meteen naar \"In behandeling\" en de klant krijgt de orderbevestiging met de factuur."
+msgstr "Summe 0 €: Es gibt nichts zu bezahlen. Die Bestellung geht sofort auf \"In Bearbeitung\" und der Kunde erhält die Bestellbestätigung mit der Rechnung."

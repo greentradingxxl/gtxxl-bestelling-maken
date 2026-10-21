@@ -476,6 +476,15 @@ class GTXXL_Maken {
                 $nieuw->add_order_note( sprintf( 'Snelle bestelling gemaakt in de backoffice%s.', $staart ), 0, true );
             }
 
+            // Totaal € 0: er valt niets te betalen. Net als WooCommerce bij een gratis bestelling via de kassa meteen als
+            // betaald behandelen: ze gaat naar "In behandeling" (en zo nodig door naar "Afgerond"), de voorraad gaat eraf
+            // zoals gekozen, en de klant krijgt de gewone bevestiging met de factuur.
+            if ( (float) $nieuw->get_total() <= 0 ) {
+                $nieuw->add_order_note( 'Totaal € 0: niets te betalen, meteen als betaald behandeld.', 0, false );
+                $nieuw->payment_complete();
+                $nieuw = wc_get_order( $nieuw->get_id() );
+            }
+
             if ( ! empty( $in['mail'] ) && $nieuw->get_total() > 0 && $nieuw->get_billing_email() ) {
                 $mails = WC()->mailer()->get_emails();
                 if ( isset( $mails['GTXXL_Maken_Betaalverzoek_Email'] ) ) {

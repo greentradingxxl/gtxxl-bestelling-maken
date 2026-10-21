@@ -90,6 +90,10 @@
 
         var som = uitkomst ? uitkomst.totaal : 0;
         $totaal.html( '<div class="gtxxl-wz__rij is-slot"><span>' + t( 'totaal' ) + ( uitkomst && uitkomst.btw_vrij ? ' <small>(' + t( 'zonderBtw' ) + ')</small>' : '' ) + '</span><strong>' + ( rekent ? '…' : veilig( geld( heeft || uitkomst ? som : 0 ) ) ) + '</strong></div>' );
+        // Totaal € 0: er valt niets te betalen, dus geen betaallink; de bestelling gaat meteen naar "In behandeling".
+        var gratis = heeft && !! uitkomst && ! rekent && som <= 0;
+        $( '#gtxxl-bm-betaling' ).toggle( ! gratis );
+        $( '#gtxxl-bm-gratis' ).toggle( gratis );
         var kanNiet = uitkomst && uitkomst.verzend && ! uitkomst.verzend.kan;
         $( '#gtxxl-bm-doen' ).prop( 'disabled', bezig || rekent || ! heeft || ! klaarVoorProducten() || !! kanNiet );
         $( '#gtxxl-bm-zoek' ).prop( 'disabled', ! klaarVoorProducten() );

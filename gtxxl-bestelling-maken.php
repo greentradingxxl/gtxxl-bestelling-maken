@@ -2,7 +2,7 @@
 /**
  * Plugin Name: GTXXL Bestelling maken
  * Description: Snel een bestelling maken vanuit de backoffice (klant kiezen of toevoegen, producten, verzendkosten of afhalen, mail met betaallink) en een bestaande bestelling dupliceren. Gebruikt de prijs-, verzendkosten- en zoekfuncties van "GTXXL Bestelling wijzigen".
- * Version: 1.2.0
+ * Version: 1.2.1
  * Author: Green Trading XXL
  * Text Domain: gtxxl-maken
  * Domain Path: /languages
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'GTXXL_MAKEN_VERSIE', '1.2.0' );
+define( 'GTXXL_MAKEN_VERSIE', '1.2.1' );
 define( 'GTXXL_MAKEN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'GTXXL_MAKEN_URL', plugin_dir_url( __FILE__ ) );
 
