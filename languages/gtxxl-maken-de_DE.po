@@ -330,3 +330,75 @@ msgstr "Kein Versandtarif für dieses Land oder Gewicht; gib die Versandkosten s
 
 msgid "Totaal € 0: er valt niets te betalen. De bestelling gaat meteen naar \"In behandeling\" en de klant krijgt de orderbevestiging met de factuur."
 msgstr "Summe 0 €: Es gibt nichts zu bezahlen. Die Bestellung geht sofort auf \"In Bearbeitung\" und der Kunde erhält die Bestellbestätigung mit der Rechnung."
+
+msgctxt "Order status"
+msgid "Offerte"
+msgstr "Angebot"
+
+msgctxt "Order status"
+msgid "Offerte verlopen"
+msgstr "Angebot abgelaufen"
+
+msgid "Offerte <span class=\"count\">(%s)</span>"
+msgid_plural "Offertes <span class=\"count\">(%s)</span>"
+msgstr[0] "Angebot <span class=\"count\">(%s)</span>"
+msgstr[1] "Angebote <span class=\"count\">(%s)</span>"
+
+msgid "Offerte verlopen <span class=\"count\">(%s)</span>"
+msgid_plural "Offertes verlopen <span class=\"count\">(%s)</span>"
+msgstr[0] "Angebot abgelaufen <span class=\"count\">(%s)</span>"
+msgstr[1] "Angebote abgelaufen <span class=\"count\">(%s)</span>"
+
+msgid "Offerte"
+msgstr "Angebot"
+
+msgid "Offerte %s"
+msgstr "Angebot %s"
+
+msgid "Offerte (de pdf is nog niet gemaakt)"
+msgstr "Angebot (das PDF wurde noch nicht erstellt)"
+
+msgid "Offerte met pdf naar de klant mailen"
+msgstr "Angebot mit PDF an den Kunden mailen"
+
+msgid "Offerte met pdf naar de klant mailen (%s)"
+msgstr "Angebot mit PDF an den Kunden mailen (%s)"
+
+msgid "Geldig tot en met"
+msgstr "Gültig bis einschließlich"
+
+msgid "Gaat naar de klant als je een snelle offerte maakt (of opnieuw mailt): wat er in de offerte zit, tot wanneer ze geldig is, de knop om te accepteren en te betalen en de offerte als pdf."
+msgstr "Geht an den Kunden, wenn du ein schnelles Angebot erstellst (oder erneut mailst): was im Angebot enthalten ist, bis wann es gültig ist, der Button zum Annehmen und Bezahlen und das Angebot als PDF."
+
+msgid "Kies tot wanneer de offerte geldig is (vandaag of later)."
+msgstr "Wähle, bis wann das Angebot gültig ist (heute oder später)."
+
+msgid "Een offerte van € 0 kan de klant niet accepteren. Maak er een snelle bestelling van."
+msgstr "Ein Angebot über 0 € kann der Kunde nicht annehmen. Lege stattdessen eine Schnellbestellung an."
+
+msgid "Snelle offerte"
+msgstr "Schnelles Angebot"
+
+msgid "Offerte maken"
+msgstr "Angebot erstellen"
+
+msgid "Producten krijgen de prijs van nu; de prijs per stuk kun je aanpassen. De offerte krijgt de status \"Offerte\". Betaalt de klant via de link, dan wordt het een gewone bestelling en gaat de voorraad eraf."
+msgstr "Produkte erhalten den aktuellen Preis; den Preis pro Stück kannst du anpassen. Das Angebot erhält den Status „Angebot“. Bezahlt der Kunde über den Link, wird daraus eine normale Bestellung und der Bestand wird abgebucht."
+
+msgid "Offertes"
+msgstr "Angebote"
+
+msgid "Open"
+msgstr "Offen"
+
+msgid "Verlopen"
+msgstr "Abgelaufen"
+
+msgid "Geaccepteerd"
+msgstr "Angenommen"
+
+msgid "Alle offertes"
+msgstr "Alle Angebote"
+
+msgid "Offertes &lsaquo; %s &#8212; WordPress"
+msgstr "Angebote &lsaquo; %s &#8212; WordPress"

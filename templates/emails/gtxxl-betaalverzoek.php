@@ -98,11 +98,15 @@ do_action( 'woocommerce_email_header', $email_heading, $email ); ?>
 	</tr>
 </table>
 
-<table cellspacing="0" cellpadding="0" border="0" style="margin:0 0 14px;">
+<?php // De ruimte rond de tekst staat op de cel, niet op de link: Outlook negeert padding op een link, en ook de marge onder een tabel; daarom een lege rij als afstand. ?>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0;">
 	<tr>
-		<td style="padding:0; border-radius:6px; background-color:<?php echo esc_attr( $gtxxl_base ); ?>;">
-			<a href="<?php echo esc_url( $betaallink ); ?>" style="display:inline-block; padding:13px 26px; color:#ffffff; font-size:16px; font-weight:bold; line-height:120%; text-decoration:none; border-radius:6px;"><?php echo esc_html( $gtxxl_t['button'] . ' (' . $gtxxl_geld( $order->get_total() ) . ')' ); ?></a>
+		<td bgcolor="<?php echo esc_attr( $gtxxl_base ); ?>" style="padding:13px 26px; border-radius:6px; background-color:<?php echo esc_attr( $gtxxl_base ); ?>;">
+			<a href="<?php echo esc_url( $betaallink ); ?>" style="display:inline-block; color:#ffffff; font-size:16px; font-weight:bold; line-height:120%; text-decoration:none;"><?php echo esc_html( $gtxxl_t['button'] . ' (' . $gtxxl_geld( $order->get_total() ) . ')' ); ?></a>
 		</td>
+	</tr>
+	<tr>
+		<td height="18" style="height:18px; padding:0; font-size:1px; line-height:18px;">&nbsp;</td>
 	</tr>
 </table>
 

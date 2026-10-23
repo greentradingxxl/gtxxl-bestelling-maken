@@ -1,4 +1,4 @@
-/* Het venster "Snelle bestelling" en "Bestelling dupliceren" in de backoffice. */
+/* Het venster "Snelle bestelling", "Snelle offerte" en "Bestelling dupliceren" in de backoffice. */
 ( function ( $ ) {
     'use strict';
 
@@ -8,7 +8,8 @@
     }
 
     var $overlay, $regels, $totaal, $melding, $kaart, $form;
-    // 'nieuw' = snelle bestelling voor een klant; 'kopie' = de bestelling die openstaat dupliceren.
+    // 'nieuw' = snelle bestelling voor een klant; 'offerte' = offerte voor een klant; 'kopie' = de bestelling die
+    // openstaat dupliceren.
     var modus = 'nieuw';
     // De producten in de lijst, de kostenregels van de oude bestelling (aan of uit), de levering en de klant.
     var lijnen = [], overig = {}, levering = 'verzenden', leveringVoor = 'verzenden', klant = null, klantLaatste = '';
@@ -91,7 +92,8 @@
         var som = uitkomst ? uitkomst.totaal : 0;
         $totaal.html( '<div class="gtxxl-wz__rij is-slot"><span>' + t( 'totaal' ) + ( uitkomst && uitkomst.btw_vrij ? ' <small>(' + t( 'zonderBtw' ) + ')</small>' : '' ) + '</span><strong>' + ( rekent ? '…' : veilig( geld( heeft || uitkomst ? som : 0 ) ) ) + '</strong></div>' );
         // Totaal € 0: er valt niets te betalen, dus geen betaallink; de bestelling gaat meteen naar "In behandeling".
-        var gratis = heeft && !! uitkomst && ! rekent && som <= 0;
+        // Een offerte van € 0 maakt de server niet.
+        var gratis = 'offerte' !== modus && heeft && !! uitkomst && ! rekent && som <= 0;
         $( '#gtxxl-bm-betaling' ).toggle( ! gratis );
         $( '#gtxxl-bm-gratis' ).toggle( gratis );
         var kanNiet = uitkomst && uitkomst.verzend && ! uitkomst.verzend.kan;
@@ -200,7 +202,7 @@
     }
 
     function tekenKlant() {
-        if ( 'nieuw' !== modus ) { return; }
+        if ( 'kopie' === modus ) { return; }
         var formOpen = $form.is( ':visible' );
         // Tijdens het invullen van de klant maakt de productlijst plaats voor het formulier.
         $overlay.find( '.gtxxl-bm__producten' ).toggle( ! formOpen );
@@ -217,7 +219,7 @@
             '</div><div class="gtxxl-bm__klant-links"><button type="button" class="button-link" id="gtxxl-bm-klant-aanpassen">' + t( 'aanpassen' ) + '</button>' +
             '<button type="button" class="button-link" id="gtxxl-bm-klant-andere">' + t( 'andereKlant' ) + '</button></div>';
         $kaart.html( html );
-        $( '#gtxxl-bm-mail-tekst' ).text( tp( 'mailNaar', klant.email ) );
+        $( '#gtxxl-bm-mail-tekst' ).text( tp( 'offerte' === modus ? 'offerteNaar' : 'mailNaar', klant.email ) );
     }
 
     function openForm( velden ) {
@@ -297,7 +299,7 @@
         if ( window.gtxxlZoeker ) { window.gtxxlZoeker.order_id = 0; window.gtxxlZoeker.taal = klant ? klant.taal : ''; }
         if ( ! klant ) {
             $( '#gtxxl-bm-klant-zoek' ).val( null ).trigger( 'change.select2' );
-            $( '#gtxxl-bm-mail-tekst' ).text( G.t.mailZonder );
+            $( '#gtxxl-bm-mail-tekst' ).text( 'offerte' === modus ? G.t.offerteZonder : G.t.mailZonder );
         }
         herreken();
     }
@@ -314,10 +316,13 @@
         $form.hide();
         $overlay.find( '.gtxxl-bm__producten' ).show();
         $overlay.find( '.gtxxl-bm__klant' ).removeClass( 'is-open' );
-        $overlay.find( '.gtxxl-bm' ).toggleClass( 'is-nieuw', 'nieuw' === modus ).toggleClass( 'is-kopie', 'kopie' === modus );
-        $overlay.find( '[data-alleen]' ).each( function () { $( this ).toggle( $( this ).data( 'alleen' ) === modus ); } );
-        $( '#gtxxl-bm-titel' ).text( 'kopie' === modus ? tp( 'titelKopie', G.kopie.nummer ) : G.t.titelNieuw );
-        $( '#gtxxl-bm-doen' ).text( 'kopie' === modus ? G.t.doenKopie : G.t.doenNieuw ).data( 'tekst', 'kopie' === modus ? G.t.doenKopie : G.t.doenNieuw );
+        $overlay.find( '.gtxxl-bm' ).toggleClass( 'is-nieuw', 'kopie' !== modus ).toggleClass( 'is-kopie', 'kopie' === modus ).toggleClass( 'is-offerte', 'offerte' === modus );
+        // data-alleen="nieuw offerte": alleen te zien in die modi.
+        $overlay.find( '[data-alleen]' ).each( function () { $( this ).toggle( -1 !== String( $( this ).data( 'alleen' ) ).split( ' ' ).indexOf( modus ) ); } );
+        var doenTekst = { nieuw: G.t.doenNieuw, offerte: G.t.doenOfferte, kopie: G.t.doenKopie }[ modus ];
+        $( '#gtxxl-bm-titel' ).text( 'kopie' === modus ? tp( 'titelKopie', G.kopie.nummer ) : ( 'offerte' === modus ? G.t.titelOfferte : G.t.titelNieuw ) );
+        $( '#gtxxl-bm-doen' ).text( doenTekst ).data( 'tekst', doenTekst );
+        $( '#gtxxl-bm-geldig' ).val( G.geldig ).attr( 'min', G.vandaag );
         $( '#gtxxl-bm-niet-verzenden' ).prop( 'checked', false );
         $( 'input[name="gtxxl-bm-voorraad"][value=""]' ).prop( 'checked', true );
         // De mail met betaallink staat standaard aan.
@@ -354,6 +359,8 @@
     function doen() {
         if ( bezig ) { return; }
         if ( ! zichtbaar().length ) { meld( G.t.leeg ); return; }
+        var geldig = $( '#gtxxl-bm-geldig' ).val() || '';
+        if ( 'offerte' === modus && ( ! /^\d{4}-\d{2}-\d{2}$/.test( geldig ) || geldig < G.vandaag ) ) { meld( G.t.geldigFout ); return; }
         bezig = true;
         $melding.empty();
         $( '#gtxxl-bm-doen' ).prop( 'disabled', true ).text( G.t.bezig );
@@ -361,7 +368,8 @@
             action: 'gtxxl_maak_bestelling',
             voorraad: $( 'input[name="gtxxl-bm-voorraad"]:checked' ).val() || '',
             mail: $( '#gtxxl-bm-mail' ).is( ':checked' ) ? '1' : '0',
-            bericht: $( '#gtxxl-bm-bericht' ).val()
+            bericht: $( '#gtxxl-bm-bericht' ).val(),
+            geldig: geldig
         }, gekozen() ) ).done( function ( antwoord ) {
             if ( ! antwoord || ! antwoord.success ) {
                 meld( fout( antwoord, G.t.mislukt ) );
@@ -388,12 +396,18 @@
         $kaart   = $overlay.find( '.gtxxl-bm__klant-kaart' );
         $form    = $overlay.find( '.gtxxl-bm__klant-form' );
 
-        // "Snelle bestelling" naast "Bestelling toevoegen".
+        // "Snelle bestelling" naast "Bestelling toevoegen". Op de pagina Offertes (dezelfde lijst, gefilterd) heet de
+        // kop "Offertes" en staat er alleen "Snelle offerte".
         var $toevoegen = $( '.wrap .page-title-action' ).first();
-        if ( $toevoegen.length ) {
+        if ( $toevoegen.length && G.offertes ) {
+            $( '.wrap h1.wp-heading-inline' ).first().text( G.t.offertes );
+            $( '<a href="#" class="page-title-action" id="gtxxl-bm-offerte"></a>' ).text( G.t.knopOfferte ).insertAfter( $toevoegen );
+            $toevoegen.remove();
+        } else if ( $toevoegen.length ) {
             $( '<a href="#" class="page-title-action" id="gtxxl-bm-nieuw"></a>' ).text( G.t.knopNieuw ).insertAfter( $toevoegen );
         }
         $( document ).on( 'click', '#gtxxl-bm-nieuw', function ( e ) { e.preventDefault(); open( 'nieuw' ); } );
+        $( document ).on( 'click', '#gtxxl-bm-offerte', function ( e ) { e.preventDefault(); open( 'offerte' ); } );
         $( document ).on( 'click', '#gtxxl-bm-kopie', function () { open( 'kopie' ); } );
 
         // "Bestelling dupliceren" hoort bij "Bestelling wijzigen" en "Terugbetalen", links onder de producten. Dat blok

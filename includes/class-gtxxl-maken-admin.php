@@ -1,8 +1,9 @@
 <?php
 /**
- * Het venster in de backoffice: "Snelle bestelling" (naast "Bestelling toevoegen") en "Bestelling dupliceren"
- * (onder de producten van een bestelling). Eén venster voor allebei; bij een snelle bestelling komt er een stap
- * "klant" bij en begint de lijst leeg.
+ * Het venster in de backoffice: "Snelle bestelling" (naast "Bestelling toevoegen"), "Snelle offerte" (op de pagina
+ * Offertes, zie GTXXL_Maken_Offerte) en "Bestelling dupliceren" (onder de producten van een bestelling). Eén venster voor alle drie; bij een snelle bestelling en een
+ * offerte komt er een stap "klant" bij en begint de lijst leeg. Een offerte heeft geen keuze voor de voorraad, maar wel
+ * een datum tot wanneer ze geldig is.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -83,6 +84,11 @@ class GTXXL_Maken_Admin {
             'nonce'    => wp_create_nonce( 'gtxxl_maken' ),
             'valuta'   => html_entity_decode( get_woocommerce_currency_symbol(), ENT_QUOTES, 'UTF-8' ),
             'landen'   => $landen,
+            // De pagina Offertes: kop "Offertes" en alleen de knop "Snelle offerte".
+            'offertes' => '' !== GTXXL_Maken_Offerte::lijst_tab(),
+            // Een nieuwe offerte: standaard geldig tot en met, en de vroegste datum.
+            'geldig'   => GTXXL_Maken_Offerte::standaard_tot(),
+            'vandaag'  => current_time( 'Y-m-d' ),
             // De bestelling die openstaat, om te dupliceren.
             'kopie'    => $order ? [
                 'order_id'      => $order->get_id(),
@@ -95,10 +101,14 @@ class GTXXL_Maken_Admin {
             ] : null,
             // Een gemaakte bestelling houdt de taal van de klant: WooCommerce Multilingual zet anders bij het opslaan de
             // taal van de medewerker.
-            'taal'     => $order && in_array( $order->get_created_via(), [ GTXXL_Maken::VIA_KOPIE, GTXXL_Maken::VIA_NIEUW, 'gtxxl_wijzigen' ], true ) ? (string) $order->get_meta( 'wpml_language' ) : '',
+            'taal'     => $order && in_array( $order->get_created_via(), [ GTXXL_Maken::VIA_KOPIE, GTXXL_Maken::VIA_NIEUW, GTXXL_Maken::VIA_OFFERTE, 'gtxxl_wijzigen' ], true ) ? (string) $order->get_meta( 'wpml_language' ) : '',
             't'        => [
                 'knopNieuw'    => __( 'Snelle bestelling', 'gtxxl-maken' ),
                 'titelNieuw'   => __( 'Snelle bestelling', 'gtxxl-maken' ),
+                'offertes'     => __( 'Offertes', 'gtxxl-maken' ),
+                'knopOfferte'  => __( 'Snelle offerte', 'gtxxl-maken' ),
+                'titelOfferte' => __( 'Snelle offerte', 'gtxxl-maken' ),
+                'doenOfferte'  => __( 'Offerte maken', 'gtxxl-maken' ),
                 /* translators: %s: bestelnummer */
                 'titelKopie'   => __( 'Bestelling #%s dupliceren', 'gtxxl-maken' ),
                 'doenNieuw'    => __( 'Bestelling maken', 'gtxxl-maken' ),
@@ -131,6 +141,10 @@ class GTXXL_Maken_Admin {
                 /* translators: %s: e-mailadres */
                 'mailNaar'     => __( 'Klant een mail met betaallink sturen (%s)', 'gtxxl-maken' ),
                 'mailZonder'   => __( 'Klant een mail met betaallink sturen', 'gtxxl-maken' ),
+                /* translators: %s: e-mailadres */
+                'offerteNaar'  => __( 'Offerte met pdf naar de klant mailen (%s)', 'gtxxl-maken' ),
+                'offerteZonder' => __( 'Offerte met pdf naar de klant mailen', 'gtxxl-maken' ),
+                'geldigFout'   => __( 'Kies tot wanneer de offerte geldig is (vandaag of later).', 'gtxxl-maken' ),
                 'klantZoek'    => __( 'Zoek op naam, bedrijf, e-mail, postcode of bestelnummer…', 'gtxxl-maken' ),
                 'kort'         => __( 'Typ minstens 2 tekens…', 'gtxxl-maken' ),
                 'zoeken'       => __( 'Zoeken…', 'gtxxl-maken' ),
@@ -197,7 +211,7 @@ class GTXXL_Maken_Admin {
                 <div class="gtxxl-wz__inhoud">
                     <div class="gtxxl-wz__links">
 
-                        <div class="gtxxl-bm__klant" data-alleen="nieuw">
+                        <div class="gtxxl-bm__klant" data-alleen="nieuw offerte">
                             <h3><?php echo esc_html( __( 'Klant', 'gtxxl-maken' ) ); ?></h3>
                             <div class="gtxxl-bm__klant-zoek">
                                 <select id="gtxxl-bm-klant-zoek" style="width:100%;"></select>
@@ -280,6 +294,7 @@ class GTXXL_Maken_Admin {
                             </div>
                             <p class="gtxxl-wz__uitleg" data-alleen="kopie"><?php echo esc_html( __( 'Wat uit de oude bestelling komt, houdt de prijs die de klant destijds betaalde; wat je toevoegt, krijgt de prijs van nu. De prijs per stuk kun je aanpassen.', 'gtxxl-maken' ) ); ?></p>
                             <p class="gtxxl-wz__uitleg" data-alleen="nieuw"><?php echo esc_html( __( 'Producten krijgen de prijs van nu; de prijs per stuk kun je aanpassen. De bestelling krijgt de status "Wachtend op betaling".', 'gtxxl-maken' ) ); ?></p>
+                            <p class="gtxxl-wz__uitleg" data-alleen="offerte"><?php echo esc_html( __( 'Producten krijgen de prijs van nu; de prijs per stuk kun je aanpassen. De offerte krijgt de status "Offerte". Betaalt de klant via de link, dan wordt het een gewone bestelling en gaat de voorraad eraf.', 'gtxxl-maken' ) ); ?></p>
                         </div>
                     </div>
 
@@ -294,13 +309,17 @@ class GTXXL_Maken_Admin {
                             <label class="gtxxl-wz__vink"><input type="checkbox" id="gtxxl-bm-niet-verzenden"> <?php echo esc_html( __( 'Bestelling hoeft niet meer verzonden te worden', 'gtxxl-maken' ) ); ?></label>
                             <p class="gtxxl-wz__klein"><?php echo esc_html( __( 'Na betaling gaat ze direct naar "Afgerond" en komt ze niet bij de inpakkers.', 'gtxxl-maken' ) ); ?></p>
                         </div>
-                        <h3><?php echo esc_html( __( 'Voorraad', 'gtxxl-maken' ) ); ?></h3>
-                        <div class="gtxxl-bm__keuze">
+                        <h3 data-alleen="nieuw kopie"><?php echo esc_html( __( 'Voorraad', 'gtxxl-maken' ) ); ?></h3>
+                        <div class="gtxxl-bm__keuze" data-alleen="nieuw kopie">
                             <label><input type="radio" name="gtxxl-bm-voorraad" value="" checked> <?php echo esc_html( __( 'Afboeken als de bestelling betaald is', 'gtxxl-maken' ) ); ?></label>
                             <label><input type="radio" name="gtxxl-bm-voorraad" value="nu"> <?php echo esc_html( __( 'Nu al afboeken', 'gtxxl-maken' ) ); ?></label>
                             <label><input type="radio" name="gtxxl-bm-voorraad" value="niet"> <?php echo esc_html( __( 'Niet aanpassen', 'gtxxl-maken' ) ); ?></label>
                         </div>
-                        <h3><?php echo esc_html( __( 'Betaling', 'gtxxl-maken' ) ); ?></h3>
+                        <h3 data-alleen="nieuw kopie"><?php echo esc_html( __( 'Betaling', 'gtxxl-maken' ) ); ?></h3>
+                        <h3 data-alleen="offerte"><?php echo esc_html( __( 'Offerte', 'gtxxl-maken' ) ); ?></h3>
+                        <div class="gtxxl-bm__rij" data-alleen="offerte">
+                            <label class="gtxxl-bm__veld"><span><?php echo esc_html( __( 'Geldig tot en met', 'gtxxl-maken' ) ); ?> *</span><input type="date" id="gtxxl-bm-geldig"></label>
+                        </div>
                         <div id="gtxxl-bm-betaling">
                             <label class="gtxxl-wz__vink"><input type="checkbox" id="gtxxl-bm-mail"> <span id="gtxxl-bm-mail-tekst"></span></label>
                             <textarea id="gtxxl-bm-bericht" rows="3" placeholder="<?php echo esc_attr( __( 'Bericht aan de klant (optioneel)…', 'gtxxl-maken' ) ); ?>"></textarea>
@@ -354,6 +373,8 @@ class GTXXL_Maken_Admin {
             'voorraad'       => sanitize_key( wp_unslash( $_POST['voorraad'] ?? '' ) ),
             'mail'           => '1' === (string) ( $_POST['mail'] ?? '0' ),
             'bericht'        => sanitize_textarea_field( wp_unslash( $_POST['bericht'] ?? '' ) ),
+            'offerte'        => 'offerte' === ( $_POST['soort'] ?? '' ),
+            'geldig'         => sanitize_text_field( wp_unslash( $_POST['geldig'] ?? '' ) ),
         ];
         if ( 'kopie' === ( $_POST['soort'] ?? '' ) ) {
             $origineel = wc_get_order( absint( $_POST['order_id'] ?? 0 ) );

@@ -5,7 +5,7 @@
  * Beide gaan door dezelfde rekenronde (plan): de producten met hun prijs, de verzendkosten of afhalen, de
  * substratentoeslag en het totaal. Wat uit een bestaande bestelling komt, houdt de prijs die de klant destijds
  * betaalde; wat erbij komt, krijgt de prijs van nu. Per product kan een afwijkende prijs worden opgegeven.
- * De nieuwe bestelling krijgt de status "Wachtend op betaling".
+ * De nieuwe bestelling krijgt de status "Wachtend op betaling", een offerte de status "Offerte".
  *
  * Voor de prijs met btw en de verzendkosten gelden de functies van "GTXXL Bestelling wijzigen".
  */
@@ -21,8 +21,9 @@ class GTXXL_Maken {
     /** Op de nieuwe bestelling: de voorraad wordt voor deze bestelling niet aangepast. */
     const META_GEEN_VOORRAAD = '_gtxxl_geen_voorraad';
 
-    const VIA_KOPIE = 'gtxxl_dupliceren';
-    const VIA_NIEUW = 'gtxxl_snelle_bestelling';
+    const VIA_KOPIE   = 'gtxxl_dupliceren';
+    const VIA_NIEUW   = 'gtxxl_snelle_bestelling';
+    const VIA_OFFERTE = 'gtxxl_offerte';
 
     public static function init(): void {
         // Hoeft niet verzonden te worden: nooit in de inpaklijst, en na betaling meteen afgerond.
@@ -350,7 +351,8 @@ class GTXXL_Maken {
      * @param WC_Order      $klant     Zie plan().
      * @param WC_Order|null $origineel De bestelling die gekopieerd wordt, of null bij een nieuwe bestelling.
      * @param array         $in        Zie plan(), plus: niet_verzenden, mail (bool), voorraad ('nu' = meteen afboeken,
-     *                                 'niet' = niet aanpassen, anders bij betaling) en bericht (string).
+     *                                 'niet' = niet aanpassen, anders bij betaling), bericht (string), en voor een offerte:
+     *                                 offerte (bool) en geldig (Y-m-d, de laatste dag).
      * @return WC_Order|WP_Error
      */
     public static function maak( WC_Order $klant, ?WC_Order $origineel, array $in ) {
@@ -371,9 +373,25 @@ class GTXXL_Maken {
             return new WP_Error( 'verzend', __( 'Voor dit land of gewicht staat er geen verzendtarief in de tabel. Kies "Geen verzendkosten" en zet ze er daarna zelf bij.', 'gtxxl-maken' ) );
         }
         $voorraad = in_array( (string) ( $in['voorraad'] ?? '' ), [ 'nu', 'niet' ], true ) ? (string) $in['voorraad'] : '';
+        // Een offerte: de voorraad gaat er pas af als de klant betaalt, en er moet iets te betalen zijn.
+        $offerte = ! empty( $in['offerte'] );
+        if ( $offerte ) {
+            $voorraad = '';
+            $geldig   = (string) ( $in['geldig'] ?? '' );
+            if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $geldig ) || $geldig < current_time( 'Y-m-d' ) ) {
+                return new WP_Error( 'geldig', __( 'Kies tot wanneer de offerte geldig is (vandaag of later).', 'gtxxl-maken' ) );
+            }
+            if ( $plan['totaal'] <= 0 ) {
+                return new WP_Error( 'gratis', __( 'Een offerte van € 0 kan de klant niet accepteren. Maak er een snelle bestelling van.', 'gtxxl-maken' ) );
+            }
+        }
 
         try {
-            $nieuw = wc_create_order( [ 'customer_id' => (int) $klant->get_customer_id(), 'status' => 'pending', 'created_via' => $origineel ? self::VIA_KOPIE : self::VIA_NIEUW ] );
+            $nieuw = wc_create_order( [
+                'customer_id' => (int) $klant->get_customer_id(),
+                'status'      => $offerte ? GTXXL_Maken_Offerte::STATUS : 'pending',
+                'created_via' => $offerte ? self::VIA_OFFERTE : ( $origineel ? self::VIA_KOPIE : self::VIA_NIEUW ),
+            ] );
             if ( is_wp_error( $nieuw ) ) {
                 return $nieuw;
             }
@@ -391,6 +409,9 @@ class GTXXL_Maken {
             }
             if ( $origineel ) {
                 $nieuw->update_meta_data( self::META_VAN, $origineel->get_id() );
+            }
+            if ( $offerte ) {
+                $nieuw->update_meta_data( GTXXL_Maken_Offerte::META_TOT, $geldig );
             }
             if ( ! empty( $in['niet_verzenden'] ) ) {
                 $nieuw->update_meta_data( self::META_NIET_VERZENDEN, '1' );
@@ -472,6 +493,8 @@ class GTXXL_Maken {
             if ( $origineel ) {
                 $nieuw->add_order_note( sprintf( 'Gedupliceerd van bestelling #%s%s.', $origineel->get_order_number(), $staart ), 0, false );
                 $origineel->add_order_note( sprintf( 'Gedupliceerd naar bestelling #%s (%s)%s.', $nieuw->get_order_number(), self::bedrag( (float) $nieuw->get_total(), $nieuw ), $staart ), 0, false );
+            } elseif ( $offerte ) {
+                $nieuw->add_order_note( sprintf( 'Offerte gemaakt in de backoffice, geldig tot en met %s%s.', GTXXL_Maken_Offerte::datum( $geldig, true ), $staart ), 0, true );
             } else {
                 $nieuw->add_order_note( sprintf( 'Snelle bestelling gemaakt in de backoffice%s.', $staart ), 0, true );
             }
@@ -479,13 +502,19 @@ class GTXXL_Maken {
             // Totaal € 0: er valt niets te betalen. Net als WooCommerce bij een gratis bestelling via de kassa meteen als
             // betaald behandelen: ze gaat naar "In behandeling" (en zo nodig door naar "Afgerond"), de voorraad gaat eraf
             // zoals gekozen, en de klant krijgt de gewone bevestiging met de factuur.
-            if ( (float) $nieuw->get_total() <= 0 ) {
+            if ( ! $offerte && (float) $nieuw->get_total() <= 0 ) {
                 $nieuw->add_order_note( 'Totaal € 0: niets te betalen, meteen als betaald behandeld.', 0, false );
                 $nieuw->payment_complete();
                 $nieuw = wc_get_order( $nieuw->get_id() );
             }
 
-            if ( ! empty( $in['mail'] ) && $nieuw->get_total() > 0 && $nieuw->get_billing_email() ) {
+            if ( $offerte ) {
+                // Het offertenummer (OF2026-0001) meteen geven, ook als de offerte niet gemaild wordt.
+                GTXXL_Maken_Offerte::nummer( $nieuw, true );
+                if ( ! empty( $in['mail'] ) && GTXXL_Maken_Offerte::mail( $nieuw, (string) ( $in['bericht'] ?? '' ) ) ) {
+                    $nieuw->add_order_note( 'Offerte met pdf naar de klant gemaild.', 0, false );
+                }
+            } elseif ( ! empty( $in['mail'] ) && $nieuw->get_total() > 0 && $nieuw->get_billing_email() ) {
                 $mails = WC()->mailer()->get_emails();
                 if ( isset( $mails['GTXXL_Maken_Betaalverzoek_Email'] ) ) {
                     $mails['GTXXL_Maken_Betaalverzoek_Email']->trigger( $nieuw, (string) ( $in['bericht'] ?? '' ) );

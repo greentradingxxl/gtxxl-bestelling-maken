@@ -99,3 +99,9 @@
     .gtxxl-bm .gtxxl-wz__aantal input { width: 48px; min-height: 36px; }
     .gtxxl-bm__prijs input { width: 84px; min-height: 36px; }
 }
+
+/* Offertes: de status in de lijst en het blok in de bestelling (nummer, geldig tot, betaallink). */
+.order-status.status-offerte { background: #dfeaf6; color: #1d4f7a; }
+.order-status.status-offerte-verlopen { background: #ececec; color: #6b6b6b; }
+.gtxxl-offerte-blok label { display: block; margin: 8px 0 2px; }
+.gtxxl-offerte-blok input { width: 100%; }
