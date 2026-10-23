@@ -444,6 +444,23 @@
     var r2 = function ( x ) { return Math.round( x * 100 ) / 100; };
     var komma = function ( x, dec ) { return x.toFixed( dec ).replace( '.', ',' ); };
 
+    // Scrollen met de muis boven een venster scrolt alleen het venster zelf, nooit de pagina erachter: ook niet als
+    // het venster al onderaan of bovenaan is, of niets te scrollen heeft. Naast het venster scrolt de pagina gewoon.
+    function houdScrollVast( e ) {
+        var doos = this, dy = e.deltaY;
+        if ( ! dy ) { return; }
+        for ( var el = e.target; el && el !== doos.parentNode; el = el.parentNode ) {
+            if ( 1 !== el.nodeType ) { continue; }
+            var stijl = window.getComputedStyle( el ).overflowY;
+            if ( ( 'auto' === stijl || 'scroll' === stijl ) && el.scrollHeight > el.clientHeight + 1 ) {
+                var kanOp = el.scrollTop > 0, kanNeer = el.scrollTop + el.clientHeight < el.scrollHeight - 1;
+                if ( ( dy < 0 && kanOp ) || ( dy > 0 && kanNeer ) ) { return; } // dit deel scrolt zelf
+            }
+            if ( el === doos ) { break; }
+        }
+        e.preventDefault();
+    }
+
     function rekenhulp() {
         $reken = $( '<div class="gtxxl-bm-reken" id="gtxxl-bm-reken" hidden>' +
             '<div class="gtxxl-bm-reken__doos" role="dialog" aria-modal="true" aria-labelledby="gtxxl-bm-reken-titel">' +
@@ -456,6 +473,7 @@
                 '<p class="gtxxl-wz__klein">' + t( 'rekenUitleg' ) + '</p>' +
                 '<p class="gtxxl-bm-reken__knoppen"><button type="button" class="button button-primary" id="gtxxl-bm-reken-ok">' + t( 'ok' ) + '</button><button type="button" class="button-link" id="gtxxl-bm-reken-terug">' + t( 'annuleren' ) + '</button></p>' +
             '</div></div>' ).appendTo( $overlay );
+        $reken.find( '.gtxxl-bm-reken__doos' )[ 0 ].addEventListener( 'wheel', houdScrollVast, { passive: false } );
 
         var $inkoop = $reken.find( '#gtxxl-bm-reken-inkoop' ), $marge = $reken.find( '#gtxxl-bm-reken-marge' ), $prijs = $reken.find( '#gtxxl-bm-reken-prijs' );
         var btw = function () { return rekenLijn && rekenLijn.btw ? rekenLijn.btw : 1; };
@@ -562,6 +580,7 @@
         $( document ).ajaxComplete( plaatsKnop );
 
         $overlay.on( 'click', '.gtxxl-wz__sluit', sluit );
+        $overlay.find( '.gtxxl-wz' ).each( function () { this.addEventListener( 'wheel', houdScrollVast, { passive: false } ); } );
         // Sluiten door ernaast te klikken: alleen als de klik buiten het venster begint én eindigt.
         var buitenBegonnen = false;
         $overlay.on( 'mousedown', function ( e ) { buitenBegonnen = e.target === this; } );
