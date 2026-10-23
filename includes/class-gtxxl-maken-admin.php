@@ -89,6 +89,8 @@ class GTXXL_Maken_Admin {
             // Een nieuwe offerte: standaard geldig tot en met, en de vroegste datum.
             'geldig'   => GTXXL_Maken_Offerte::standaard_tot(),
             'vandaag'  => current_time( 'Y-m-d' ),
+            // De offerte die openstaat, om te wijzigen (of null).
+            'wijzig'   => self::wijzig_gegevens( $order ),
             // De bestelling die openstaat, om te dupliceren.
             'kopie'    => $order ? [
                 'order_id'      => $order->get_id(),
@@ -109,6 +111,14 @@ class GTXXL_Maken_Admin {
                 'knopOfferte'  => __( 'Snelle offerte', 'gtxxl-maken' ),
                 'titelOfferte' => __( 'Snelle offerte', 'gtxxl-maken' ),
                 'doenOfferte'  => __( 'Offerte maken', 'gtxxl-maken' ),
+                /* translators: %s: offertenummer */
+                'titelWijzig'  => __( 'Offerte %s wijzigen', 'gtxxl-maken' ),
+                'doenWijzig'   => __( 'Offerte opslaan', 'gtxxl-maken' ),
+                /* translators: %s: e-mailadres */
+                'wijzigMail'   => __( 'Gewijzigde offerte met pdf naar de klant mailen (%s)', 'gtxxl-maken' ),
+                'offerteBewerken' => __( 'Offerte bewerken', 'gtxxl-maken' ),
+                /* translators: %s: offertenummer */
+                'offerteKop'   => __( 'Offerte %s', 'gtxxl-maken' ),
                 /* translators: %s: bestelnummer */
                 'titelKopie'   => __( 'Bestelling #%s dupliceren', 'gtxxl-maken' ),
                 'doenNieuw'    => __( 'Bestelling maken', 'gtxxl-maken' ),
@@ -186,6 +196,51 @@ class GTXXL_Maken_Admin {
                 'de'           => __( 'Duits', 'gtxxl-maken' ),
             ],
         ] );
+    }
+
+    /**
+     * Een open of verlopen offerte, om het venster mee in te vullen: klant, producten met hun prijs of korting,
+     * levering, verzendkosten en geldig tot. Een prijs die afwijkt van de prijs van nu wordt een eigen prijs; een
+     * korting op de gewone prijs een korting in procenten. Null als de offerte niet (meer) te wijzigen is.
+     */
+    private static function wijzig_gegevens( ?WC_Order $order ): ?array {
+        if ( ! GTXXL_Maken_Offerte::is_offerte( $order ) || $order->is_paid() || ! $order->has_status( [ GTXXL_Maken_Offerte::STATUS, GTXXL_Maken_Offerte::VERLOPEN ] ) ) {
+            return null;
+        }
+        $regels = [];
+        foreach ( $order->get_items() as $item ) {
+            $product = $item->get_product();
+            $aantal  = max( 1, (int) $item->get_quantity() );
+            if ( ! $product ) {
+                continue;
+            }
+            $voor      = round( ( (float) $item->get_subtotal() + (float) $item->get_subtotal_tax() ) / $aantal, 2 );
+            $na        = round( ( (float) $item->get_total() + (float) $item->get_total_tax() ) / $aantal, 2 );
+            $standaard = (float) GTXXL_Wijzigen_Plan::prijs( $order, $product, 1 )['bruto'];
+            $prijs     = null;
+            $korting   = null;
+            if ( $voor - $na >= 0.005 && abs( $voor - $standaard ) < 0.005 ) {
+                $korting = round( ( 1 - $na / $voor ) * 100, 2 );
+            } elseif ( abs( $na - $standaard ) >= 0.005 ) {
+                $prijs = $na;
+            }
+            $regels[] = [ 'id' => $product->get_id(), 'naam' => wp_strip_all_tags( $item->get_name() ), 'sku' => (string) $product->get_sku(), 'aantal' => $aantal, 'prijs' => $prijs, 'korting' => $korting ];
+        }
+        $verzend = 0.0;
+        foreach ( $order->get_items( 'shipping' ) as $item ) {
+            $verzend += (float) $item->get_total() + (float) $item->get_total_tax();
+        }
+
+        return [
+            'order_id' => $order->get_id(),
+            'nummer'   => GTXXL_Maken_Offerte::nummer( $order ),
+            'klant'    => GTXXL_Maken_Klant::velden_van( $order ),
+            'regels'   => $regels,
+            'levering' => GTXXL_Maken::levering_was( $order ),
+            'verzend'  => round( $verzend, 2 ),
+            'geldig'   => max( GTXXL_Maken_Offerte::tot( $order ), current_time( 'Y-m-d' ) ),
+            'mail'     => (string) $order->get_billing_email(),
+        ];
     }
 
     private static function veld( string $naam, string $label, bool $verplicht = false, string $soort = 'text', string $klasse = '' ): void {
@@ -407,6 +462,8 @@ class GTXXL_Maken_Admin {
             'bericht'        => sanitize_textarea_field( wp_unslash( $_POST['bericht'] ?? '' ) ),
             'korting'        => max( 0.0, min( 100.0, (float) str_replace( ',', '.', (string) wp_unslash( $_POST['korting'] ?? '0' ) ) ) ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
             'offerte'        => 'offerte' === ( $_POST['soort'] ?? '' ),
+            // Een bestaande offerte wijzigen: haar id; 0 = een nieuwe offerte.
+            'wijzig'         => 'offerte' === ( $_POST['soort'] ?? '' ) ? absint( $_POST['wijzig'] ?? 0 ) : 0,
             'geldig'         => sanitize_text_field( wp_unslash( $_POST['geldig'] ?? '' ) ),
         ];
         if ( 'kopie' === ( $_POST['soort'] ?? '' ) ) {
@@ -477,7 +534,12 @@ class GTXXL_Maken_Admin {
 
     public static function ajax_maak(): void {
         [ $klant, $origineel, $in ] = self::invoer( true );
-        $nieuw = GTXXL_Maken::maak( $klant, $origineel, $in );
+        if ( $in['wijzig'] ) {
+            $offerte = wc_get_order( $in['wijzig'] );
+            $nieuw   = $offerte instanceof WC_Order ? GTXXL_Maken::wijzig_offerte( $offerte, $klant, $in ) : new WP_Error( 'weg', __( 'Bestelling niet gevonden.', 'gtxxl-maken' ) );
+        } else {
+            $nieuw = GTXXL_Maken::maak( $klant, $origineel, $in );
+        }
         if ( is_wp_error( $nieuw ) ) {
             wp_send_json_error( [ 'code' => $nieuw->get_error_code(), 'tekst' => $nieuw->get_error_message() ] );
         }

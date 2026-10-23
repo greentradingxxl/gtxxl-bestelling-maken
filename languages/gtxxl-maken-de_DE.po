@@ -469,3 +469,24 @@ msgstr "Wie in der Produktverwaltung: Einkauf × (1 + Marge) × MwSt. = Preis. D
 
 msgid "OK"
 msgstr "OK"
+
+msgid "Alleen een offerte die nog niet betaald is, kun je wijzigen."
+msgstr "Nur ein Angebot, das noch nicht bezahlt ist, kannst du ändern."
+
+msgid "Offerte wijzigen"
+msgstr "Angebot ändern"
+
+msgid "Offerte %s wijzigen"
+msgstr "Angebot %s ändern"
+
+msgid "Offerte opslaan"
+msgstr "Angebot speichern"
+
+msgid "Gewijzigde offerte met pdf naar de klant mailen (%s)"
+msgstr "Geändertes Angebot mit PDF an den Kunden mailen (%s)"
+
+msgid "Offerte bewerken"
+msgstr "Angebot bearbeiten"
+
+msgid "Offerte %1$s &lsaquo; %2$s &#8212; WordPress"
+msgstr "Angebot %1$s &lsaquo; %2$s &#8212; WordPress"

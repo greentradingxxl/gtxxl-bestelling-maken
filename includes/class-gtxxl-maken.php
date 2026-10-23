@@ -445,18 +445,7 @@ class GTXXL_Maken {
             if ( is_wp_error( $nieuw ) ) {
                 return $nieuw;
             }
-            $nieuw->set_address( $klant->get_address( 'billing' ), 'billing' );
-            $nieuw->set_address( $klant->get_address( 'shipping' ), 'shipping' );
-            $nieuw->set_currency( $klant->get_currency() );
-            $nieuw->set_prices_include_tax( $klant->get_prices_include_tax() );
-            // De betaalwijze gaat niet mee: die kiest de klant pas op de betaalpagina.
-            // Taal en btw-gegevens van de klant, zodat mails, betaalpagina en btw kloppen.
-            foreach ( [ 'wpml_language', 'is_vat_exempt', '_billing_vat', '_gtxxl_btw_exempt', '_gtxxl_btw_reason', '_gtxxl_btw_status', '_gtxxl_btw_name', '_gtxxl_btw_address', '_gtxxl_btw_request_id', '_gtxxl_btw_checked_at', '_gtxxl_btw_source', '_gtxxl_btw_bzst' ] as $sleutel ) {
-                $waarde = $klant->get_meta( $sleutel );
-                if ( '' !== $waarde && null !== $waarde ) {
-                    $nieuw->update_meta_data( $sleutel, $waarde );
-                }
-            }
+            self::klant_naar( $nieuw, $klant );
             if ( $origineel ) {
                 $nieuw->update_meta_data( self::META_VAN, $origineel->get_id() );
             }
@@ -470,55 +459,7 @@ class GTXXL_Maken {
                 $nieuw->update_meta_data( self::META_GEEN_VOORRAAD, '1' );
             }
 
-            foreach ( $plan['regels'] as $r ) {
-                $regel = new WC_Order_Item_Product();
-                if ( $r['product'] ) {
-                    $regel->set_product( $r['product'] );
-                }
-                $regel->set_name( $r['naam'] );
-                $regel->set_quantity( $r['aantal'] );
-                $regel->set_tax_class( $r['tax_class'] );
-                // Met korting: het subtotaal is de gewone prijs, het totaal de prijs met korting.
-                $regel->set_subtotal( null !== $r['sub_netto'] ? $r['sub_netto'] : $r['netto'] );
-                $regel->set_total( $r['netto'] );
-                $regel->set_taxes( [ 'subtotal' => null !== $r['sub_tax'] ? $r['sub_tax'] : $r['tax'], 'total' => $r['tax'] ] );
-                if ( $r['item'] ) {
-                    foreach ( $r['item']->get_meta_data() as $meta ) {
-                        if ( ! in_array( $meta->key, [ '_reduced_stock', '_restock_refunded_items' ], true ) ) {
-                            $regel->add_meta_data( $meta->key, $meta->value );
-                        }
-                    }
-                }
-                $nieuw->add_item( $regel );
-            }
-            foreach ( $plan['kosten'] as $k ) {
-                $regel = new WC_Order_Item_Fee();
-                $regel->set_name( $k['fee']->get_name() );
-                $regel->set_tax_class( $k['fee']->get_tax_class() );
-                $regel->set_tax_status( $k['fee']->get_tax_status() );
-                $regel->set_amount( $k['fee']->get_total() );
-                $regel->set_total( $k['fee']->get_total() );
-                $regel->set_taxes( $k['fee']->get_taxes() );
-                $nieuw->add_item( $regel );
-            }
-            if ( $plan['toeslag'] ) {
-                $regel = new WC_Order_Item_Fee();
-                $regel->set_name( $plan['toeslag']['naam'] );
-                $regel->set_tax_status( 'taxable' );
-                $regel->set_tax_class( '' );
-                $regel->set_amount( $plan['toeslag']['netto'] );
-                $regel->set_total( $plan['toeslag']['netto'] );
-                $regel->set_taxes( [ 'total' => $plan['toeslag']['tax'] ] );
-                $nieuw->add_item( $regel );
-            }
-            if ( $plan['verzend'] ) {
-                $regel = new WC_Order_Item_Shipping();
-                $regel->set_method_title( $plan['verzend']['naam'] );
-                $regel->set_method_id( ! empty( $plan['verzend']['afhalen'] ) ? 'local_pickup' : 'gtxxl_verzending' );
-                $regel->set_total( $plan['verzend']['netto'] );
-                $regel->set_taxes( [ 'total' => $plan['verzend']['tax'] ] );
-                $nieuw->add_item( $regel );
-            }
+            self::regels_naar( $nieuw, $plan );
             // De btw staat al op de regels: alleen optellen, niet opnieuw berekenen.
             $nieuw->update_taxes();
             $nieuw->calculate_totals( false );
@@ -534,20 +475,7 @@ class GTXXL_Maken {
             if ( ! empty( $in['niet_verzenden'] ) ) {
                 $delen[] = 'hoeft niet verzonden te worden (na betaling direct afgerond)';
             }
-            if ( $plan['korting_bedrag'] > 0 ) {
-                $per = [];
-                foreach ( $plan['regels'] as $r ) {
-                    if ( ! empty( $r['korting_pct'] ) ) {
-                        $per[] = sprintf( '%s %s%%', $r['naam'], str_replace( '.', ',', (string) $r['korting_pct'] ) );
-                    }
-                }
-                $delen[] = sprintf( 'korting %s (%s)', self::bedrag( $plan['korting_bedrag'], $nieuw ), implode( '; ', $per ) );
-            }
-            foreach ( $plan['regels'] as $r ) {
-                if ( abs( $r['stuk'] - $r['standaard'] ) >= 0.005 ) {
-                    $delen[] = sprintf( 'afwijkende prijs voor %s: %s in plaats van %s', $r['naam'], self::bedrag( $r['stuk'], $nieuw ), self::bedrag( $r['standaard'], $nieuw ) );
-                }
-            }
+            $delen  = array_merge( $delen, self::prijs_delen( $plan, $nieuw ) );
             $staart = $delen ? ': ' . implode( ', ', $delen ) : '';
             $nieuw  = wc_get_order( $nieuw->get_id() );
             if ( $origineel ) {
@@ -585,6 +513,169 @@ class GTXXL_Maken {
             return $nieuw;
         } catch ( Throwable $e ) {
             return new WP_Error( 'mislukt', $e->getMessage() );
+        }
+    }
+
+    /** Voor de notitie: de korting en de afwijkende prijzen. */
+    private static function prijs_delen( array $plan, WC_Order $order ): array {
+        $delen = [];
+        if ( $plan['korting_bedrag'] > 0 ) {
+            $per = [];
+            foreach ( $plan['regels'] as $r ) {
+                if ( ! empty( $r['korting_pct'] ) ) {
+                    $per[] = sprintf( '%s %s%%', $r['naam'], str_replace( '.', ',', (string) $r['korting_pct'] ) );
+                }
+            }
+            $delen[] = sprintf( 'korting %s (%s)', self::bedrag( $plan['korting_bedrag'], $order ), implode( '; ', $per ) );
+        }
+        foreach ( $plan['regels'] as $r ) {
+            if ( abs( $r['stuk'] - $r['standaard'] ) >= 0.005 ) {
+                $delen[] = sprintf( 'afwijkende prijs voor %s: %s in plaats van %s', $r['naam'], self::bedrag( $r['stuk'], $order ), self::bedrag( $r['standaard'], $order ) );
+            }
+        }
+
+        return $delen;
+    }
+
+    /**
+     * Een offerte wijzigen: dezelfde rekenronde als bij het maken, maar in dezelfde bestelling. Offertenummer,
+     * bestelnummer en betaallink blijven gelijk; de offertedatum wordt vandaag. Een verlopen offerte met een nieuwe
+     * datum is weer geldig.
+     *
+     * @param WC_Order $offerte De offerte die gewijzigd wordt.
+     * @param WC_Order $klant   Zie plan(): een (niet opgeslagen) bestelling met de klantgegevens uit het venster.
+     * @param array    $in      Zie maak(); geldig is verplicht.
+     * @return WC_Order|WP_Error
+     */
+    public static function wijzig_offerte( WC_Order $offerte, WC_Order $klant, array $in ) {
+        if ( ! self::mag() ) {
+            return new WP_Error( 'geen_rechten', __( 'Je mag geen bestellingen maken.', 'gtxxl-maken' ) );
+        }
+        if ( ! GTXXL_Maken_Offerte::is_offerte( $offerte ) || $offerte->is_paid() || ! $offerte->has_status( [ GTXXL_Maken_Offerte::STATUS, GTXXL_Maken_Offerte::VERLOPEN ] ) ) {
+            return new WP_Error( 'status', __( 'Alleen een offerte die nog niet betaald is, kun je wijzigen.', 'gtxxl-maken' ) );
+        }
+        $plan = self::plan( $klant, null, $in );
+        if ( is_wp_error( $plan ) ) {
+            return $plan;
+        }
+        if ( ! $plan['regels'] ) {
+            return new WP_Error( 'leeg', __( 'Kies minstens één product.', 'gtxxl-maken' ) );
+        }
+        if ( $plan['verzend'] && empty( $plan['verzend']['kan'] ) ) {
+            return new WP_Error( 'verzend', __( 'Voor dit land of gewicht staat er geen verzendtarief in de tabel. Kies "Geen verzendkosten" en zet ze er daarna zelf bij.', 'gtxxl-maken' ) );
+        }
+        $geldig = (string) ( $in['geldig'] ?? '' );
+        if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $geldig ) || $geldig < current_time( 'Y-m-d' ) ) {
+            return new WP_Error( 'geldig', __( 'Kies tot wanneer de offerte geldig is (vandaag of later).', 'gtxxl-maken' ) );
+        }
+        if ( $plan['totaal'] <= 0 ) {
+            return new WP_Error( 'gratis', __( 'Een offerte van € 0 kan de klant niet accepteren. Maak er een snelle bestelling van.', 'gtxxl-maken' ) );
+        }
+
+        try {
+            $was = self::bedrag( (float) $offerte->get_total(), $offerte );
+            $offerte->remove_order_items();
+            $offerte->set_customer_id( (int) $klant->get_customer_id() );
+            self::klant_naar( $offerte, $klant );
+            $offerte->update_meta_data( GTXXL_Maken_Offerte::META_TOT, $geldig );
+            self::regels_naar( $offerte, $plan );
+            $offerte->update_taxes();
+            $offerte->calculate_totals( false );
+            $offerte->save();
+
+            $offerte = wc_get_order( $offerte->get_id() );
+            if ( $offerte->has_status( GTXXL_Maken_Offerte::VERLOPEN ) ) {
+                $offerte->update_status( GTXXL_Maken_Offerte::STATUS, 'Offerte weer geldig.' );
+            }
+            // De offertedatum op de pdf wordt vandaag; het offertenummer blijft.
+            if ( function_exists( 'wcpdf_get_document' ) ) {
+                $pdf = wcpdf_get_document( 'offerte', $offerte, false );
+                if ( $pdf && $pdf->exists() ) {
+                    $pdf->set_date( current_time( 'timestamp', true ) );
+                    $pdf->save();
+                }
+            }
+            $delen = self::prijs_delen( $plan, $offerte );
+            $offerte->add_order_note( sprintf( 'Offerte gewijzigd in de backoffice: totaal %s (was %s), geldig tot en met %s%s.', self::bedrag( (float) $offerte->get_total(), $offerte ), $was, GTXXL_Maken_Offerte::datum( $geldig, true ), $delen ? ', ' . implode( ', ', $delen ) : '' ), 0, true );
+
+            if ( ! empty( $in['mail'] ) && GTXXL_Maken_Offerte::mail( wc_get_order( $offerte->get_id() ), (string) ( $in['bericht'] ?? '' ) ) ) {
+                $offerte->add_order_note( 'Gewijzigde offerte met pdf naar de klant gemaild.', 0, false );
+            }
+
+            return wc_get_order( $offerte->get_id() );
+        } catch ( Throwable $e ) {
+            return new WP_Error( 'mislukt', $e->getMessage() );
+        }
+    }
+
+    /** Adres, valuta, taal en btw-gegevens van de klant naar de bestelling (bij maken en bij een gewijzigde offerte). */
+    private static function klant_naar( WC_Order $order, WC_Order $klant ): void {
+        $order->set_address( $klant->get_address( 'billing' ), 'billing' );
+        $order->set_address( $klant->get_address( 'shipping' ), 'shipping' );
+        $order->set_currency( $klant->get_currency() );
+        $order->set_prices_include_tax( $klant->get_prices_include_tax() );
+        // De betaalwijze gaat niet mee: die kiest de klant pas op de betaalpagina.
+        // Taal en btw-gegevens van de klant, zodat mails, betaalpagina en btw kloppen.
+        foreach ( [ 'wpml_language', 'is_vat_exempt', '_billing_vat', '_gtxxl_btw_exempt', '_gtxxl_btw_reason', '_gtxxl_btw_status', '_gtxxl_btw_name', '_gtxxl_btw_address', '_gtxxl_btw_request_id', '_gtxxl_btw_checked_at', '_gtxxl_btw_source', '_gtxxl_btw_bzst' ] as $sleutel ) {
+            $waarde = $klant->get_meta( $sleutel );
+            if ( '' !== $waarde && null !== $waarde ) {
+                $order->update_meta_data( $sleutel, $waarde );
+            } else {
+                $order->delete_meta_data( $sleutel );
+            }
+        }
+    }
+
+    /** De regels van de rekenronde in de bestelling: producten, kosten, toeslag en verzending. */
+    private static function regels_naar( WC_Order $order, array $plan ): void {
+        foreach ( $plan['regels'] as $r ) {
+            $regel = new WC_Order_Item_Product();
+            if ( $r['product'] ) {
+                $regel->set_product( $r['product'] );
+            }
+            $regel->set_name( $r['naam'] );
+            $regel->set_quantity( $r['aantal'] );
+            $regel->set_tax_class( $r['tax_class'] );
+            // Met korting: het subtotaal is de gewone prijs, het totaal de prijs met korting.
+            $regel->set_subtotal( null !== $r['sub_netto'] ? $r['sub_netto'] : $r['netto'] );
+            $regel->set_total( $r['netto'] );
+            $regel->set_taxes( [ 'subtotal' => null !== $r['sub_tax'] ? $r['sub_tax'] : $r['tax'], 'total' => $r['tax'] ] );
+            if ( $r['item'] ) {
+                foreach ( $r['item']->get_meta_data() as $meta ) {
+                    if ( ! in_array( $meta->key, [ '_reduced_stock', '_restock_refunded_items' ], true ) ) {
+                        $regel->add_meta_data( $meta->key, $meta->value );
+                    }
+                }
+            }
+            $order->add_item( $regel );
+        }
+        foreach ( $plan['kosten'] as $k ) {
+            $regel = new WC_Order_Item_Fee();
+            $regel->set_name( $k['fee']->get_name() );
+            $regel->set_tax_class( $k['fee']->get_tax_class() );
+            $regel->set_tax_status( $k['fee']->get_tax_status() );
+            $regel->set_amount( $k['fee']->get_total() );
+            $regel->set_total( $k['fee']->get_total() );
+            $regel->set_taxes( $k['fee']->get_taxes() );
+            $order->add_item( $regel );
+        }
+        if ( $plan['toeslag'] ) {
+            $regel = new WC_Order_Item_Fee();
+            $regel->set_name( $plan['toeslag']['naam'] );
+            $regel->set_tax_status( 'taxable' );
+            $regel->set_tax_class( '' );
+            $regel->set_amount( $plan['toeslag']['netto'] );
+            $regel->set_total( $plan['toeslag']['netto'] );
+            $regel->set_taxes( [ 'total' => $plan['toeslag']['tax'] ] );
+            $order->add_item( $regel );
+        }
+        if ( $plan['verzend'] ) {
+            $regel = new WC_Order_Item_Shipping();
+            $regel->set_method_title( $plan['verzend']['naam'] );
+            $regel->set_method_id( ! empty( $plan['verzend']['afhalen'] ) ? 'local_pickup' : 'gtxxl_verzending' );
+            $regel->set_total( $plan['verzend']['netto'] );
+            $regel->set_taxes( [ 'total' => $plan['verzend']['tax'] ] );
+            $order->add_item( $regel );
         }
     }
 

@@ -17,6 +17,9 @@
     var verzendPrijs = null;
     // Korting in procenten op de producten (snelle bestelling en offerte), als tekst zoals ingevuld; '' = geen.
     var korting = '';
+    // Een bestaande offerte wijzigen (modus is dan 'offerte'); verzendCheck: na de eerste berekening kijken of de
+    // verzendkosten van de offerte gewoon die uit de tabel zijn.
+    var wijzigen = false, verzendCheck = false;
     // Wat de server voor deze keuze heeft berekend (null = nog aan het rekenen).
     var uitkomst = null, rekenTimer = null, rekenNr = 0, bezig = false;
     // De productzoeker deelt zijn instelling met het venster "Bestelling wijzigen": bij het sluiten gaat die terug.
@@ -166,6 +169,12 @@
                     return;
                 }
                 uitkomst = antwoord.data;
+                // Offerte wijzigen: zijn de verzendkosten gewoon die uit de tabel, dan geen eigen bedrag vasthouden.
+                if ( verzendCheck ) {
+                    verzendCheck = false;
+                    var vz = uitkomst.verzend;
+                    if ( vz && vz.standaard != null && verzendPrijs != null && Math.abs( verzendPrijs - vz.standaard ) < 0.005 ) { verzendPrijs = null; }
+                }
                 $melding.html( $.map( uitkomst.let_op || [], function ( tekst ) { return '<p class="gtxxl-wz__waarschuwing">' + veilig( tekst ) + '</p>'; } ).join( '' ) );
                 $.each( uitkomst.regels, function ( i, r ) {
                     var l = vind( r.sleutel );
@@ -238,12 +247,12 @@
         var html = '<div class="gtxxl-bm__klant-tekst"><strong>' + veilig( naam ) + ( klant.bedrijf ? ' · ' + veilig( klant.bedrijf ) : '' ) + '</strong>' +
             '<span>' + veilig( klant.adres + ( klant.adres2 ? ' ' + klant.adres2 : '' ) + ', ' + klant.postcode + ' ' + klant.plaats + ', ' + landNaam( klant.land ) ) + '</span>' +
             ( klant.ander ? '<span>' + t( 'aflever' ) + ': ' + veilig( klant.a_adres + ', ' + klant.a_postcode + ' ' + klant.a_plaats + ', ' + landNaam( klant.a_land ) ) + '</span>' : '' ) +
-            '<span>' + veilig( klant.email ) + ( klant.telefoon ? ' · ' + veilig( klant.telefoon ) : '' ) + ' · ' + t( klant.taal ) + ' · ' + veilig( klantLaatste ? tp( 'laatste', klantLaatste ) : G.t.nieuweKlant ) + '</span>' +
+            '<span>' + veilig( klant.email ) + ( klant.telefoon ? ' · ' + veilig( klant.telefoon ) : '' ) + ' · ' + t( klant.taal ) + ( wijzigen ? '' : ' · ' + veilig( klantLaatste ? tp( 'laatste', klantLaatste ) : G.t.nieuweKlant ) ) + '</span>' +
             ( klant.btw ? '<span class="gtxxl-bm__btw">' + veilig( klant.btw ) + ( uitkomst && uitkomst.btw_tekst ? ' – ' + veilig( uitkomst.btw_tekst ) : '' ) + '</span>' : '' ) +
             '</div><div class="gtxxl-bm__klant-links"><button type="button" class="button-link" id="gtxxl-bm-klant-aanpassen">' + t( 'aanpassen' ) + '</button>' +
             '<button type="button" class="button-link" id="gtxxl-bm-klant-andere">' + t( 'andereKlant' ) + '</button></div>';
         $kaart.html( html );
-        $( '#gtxxl-bm-mail-tekst' ).text( tp( 'offerte' === modus ? 'offerteNaar' : 'mailNaar', klant.email ) );
+        $( '#gtxxl-bm-mail-tekst' ).text( tp( wijzigen ? 'wijzigMail' : ( 'offerte' === modus ? 'offerteNaar' : 'mailNaar' ), klant.email ) );
     }
 
     function openForm( velden ) {
@@ -333,7 +342,9 @@
     /* ---------------------------------------------------------------- */
 
     function open( nieuweModus ) {
-        modus = nieuweModus;
+        // 'wijzig' = de offerte die openstaat wijzigen: hetzelfde venster als een nieuwe offerte, al ingevuld.
+        wijzigen = 'wijzig' === nieuweModus && !! G.wijzig;
+        modus = wijzigen ? 'offerte' : nieuweModus;
         bezig = false;
         lijnen = []; overig = {}; uitkomst = null; klant = null; klantLaatste = ''; verzendPrijs = null; korting = '';
         $( '#gtxxl-bm-korting' ).val( '' );
@@ -344,10 +355,10 @@
         $overlay.find( '.gtxxl-bm' ).toggleClass( 'is-nieuw', 'kopie' !== modus ).toggleClass( 'is-kopie', 'kopie' === modus ).toggleClass( 'is-offerte', 'offerte' === modus );
         // data-alleen="nieuw offerte": alleen te zien in die modi.
         $overlay.find( '[data-alleen]' ).each( function () { $( this ).toggle( -1 !== String( $( this ).data( 'alleen' ) ).split( ' ' ).indexOf( modus ) ); } );
-        var doenTekst = { nieuw: G.t.doenNieuw, offerte: G.t.doenOfferte, kopie: G.t.doenKopie }[ modus ];
-        $( '#gtxxl-bm-titel' ).text( 'kopie' === modus ? tp( 'titelKopie', G.kopie.nummer ) : ( 'offerte' === modus ? G.t.titelOfferte : G.t.titelNieuw ) );
+        var doenTekst = wijzigen ? G.t.doenWijzig : { nieuw: G.t.doenNieuw, offerte: G.t.doenOfferte, kopie: G.t.doenKopie }[ modus ];
+        $( '#gtxxl-bm-titel' ).text( wijzigen ? tp( 'titelWijzig', G.wijzig.nummer ) : ( 'kopie' === modus ? tp( 'titelKopie', G.kopie.nummer ) : ( 'offerte' === modus ? G.t.titelOfferte : G.t.titelNieuw ) ) );
         $( '#gtxxl-bm-doen' ).text( doenTekst ).data( 'tekst', doenTekst );
-        $( '#gtxxl-bm-geldig' ).val( G.geldig ).attr( 'min', G.vandaag );
+        $( '#gtxxl-bm-geldig' ).val( wijzigen ? G.wijzig.geldig : G.geldig ).attr( 'min', G.vandaag );
         $( '#gtxxl-bm-niet-verzenden' ).prop( 'checked', false );
         $( 'input[name="gtxxl-bm-voorraad"][value=""]' ).prop( 'checked', true );
         // De mail met betaallink staat standaard aan.
@@ -362,6 +373,15 @@
             $( '#gtxxl-bm-mail-tekst' ).text( G.kopie.mail ? tp( 'mailNaar', G.kopie.mail ) : G.t.mailZonder );
             $( '#gtxxl-bm-terugbetaald, .gtxxl-bm__punt' ).toggle( !! G.kopie.terugbetaald );
             kies( false );
+        } else if ( wijzigen ) {
+            // De producten met hun eigen prijs of korting, de levering en de verzendkosten van de offerte.
+            lijnen = $.map( G.wijzig.regels, function ( r ) {
+                return { sleutel: 'p' + r.id, soort: 'extra', id: r.id, naam: r.naam, sku: r.sku, foto: '', aantal: r.aantal, prijs: r.prijs, korting: r.korting, stuk: null, standaard: null };
+            } );
+            levering = G.wijzig.levering;
+            verzendPrijs = 'verzenden' === levering ? G.wijzig.verzend : null;
+            verzendCheck = true;
+            zetKlant( G.wijzig.klant, '' );
         } else {
             levering = 'verzenden';
             zetKlant( null );
@@ -394,7 +414,8 @@
             voorraad: $( 'input[name="gtxxl-bm-voorraad"]:checked' ).val() || '',
             mail: $( '#gtxxl-bm-mail' ).is( ':checked' ) ? '1' : '0',
             bericht: $( '#gtxxl-bm-bericht' ).val(),
-            geldig: geldig
+            geldig: geldig,
+            wijzig: wijzigen ? G.wijzig.order_id : ''
         }, gekozen() ) ).done( function ( antwoord ) {
             if ( ! antwoord || ! antwoord.success ) {
                 meld( fout( antwoord, G.t.mislukt ) );
@@ -515,6 +536,15 @@
         }
         $( document ).on( 'click', '#gtxxl-bm-nieuw', function ( e ) { e.preventDefault(); open( 'nieuw' ); } );
         $( document ).on( 'click', '#gtxxl-bm-offerte', function ( e ) { e.preventDefault(); open( 'offerte' ); } );
+        $( document ).on( 'click', '#gtxxl-bm-wijzig', function ( e ) { e.preventDefault(); open( 'wijzig' ); } );
+
+        // In een open of verlopen offerte heet de pagina "Offerte bewerken" en de kop "Offerte A23517".
+        if ( G.wijzig && G.wijzig.nummer ) {
+            $( '.wrap h1.wp-heading-inline' ).first().text( G.t.offerteBewerken );
+            $( '.woocommerce-order-data__heading' ).first().contents().filter( function () {
+                return 3 === this.nodeType && -1 !== this.nodeValue.indexOf( G.wijzig.nummer );
+            } ).each( function () { this.nodeValue = ' ' + tp( 'offerteKop', G.wijzig.nummer ); } );
+        }
         $( document ).on( 'click', '#gtxxl-bm-kopie', function () { open( 'kopie' ); } );
 
         // "Bestelling dupliceren" hoort bij "Bestelling wijzigen" en "Terugbetalen", links onder de producten. Dat blok

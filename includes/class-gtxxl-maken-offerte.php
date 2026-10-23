@@ -51,7 +51,7 @@ class GTXXL_Maken_Offerte {
         // De pagina WooCommerce > Offertes: de bestellijst, beperkt tot offertes, met eigen tabbladen.
         add_action( 'admin_menu', [ __CLASS__, 'menu' ], 60 );
         add_filter( 'submenu_file', [ __CLASS__, 'menu_actief' ] );
-        add_filter( 'admin_title', [ __CLASS__, 'paginatitel' ], 20 );
+        add_filter( 'admin_title', [ __CLASS__, 'paginatitel' ], 30 );
         add_filter( 'woocommerce_order_list_table_prepare_items_query_args', [ __CLASS__, 'lijst_query' ] );
         add_filter( 'woocommerce_before_shop_order_list_table_view_links', [ __CLASS__, 'lijst_tabs' ] );
         add_filter( 'woocommerce_shop_order_list_table_should_render_blank_state', [ __CLASS__, 'lijst_leeg' ] );
@@ -60,6 +60,9 @@ class GTXXL_Maken_Offerte {
         add_filter( 'woocommerce_order_actions', [ __CLASS__, 'acties' ], 10, 2 );
         add_action( 'woocommerce_order_action_gtxxl_offerte_mailen', [ __CLASS__, 'actie_mailen' ] );
         add_action( 'woocommerce_admin_order_data_after_order_details', [ __CLASS__, 'melding' ], 18 );
+        // Een offerte is nog geen bestelling: geen blokken voor verzenden, retouren en facturen.
+        add_action( 'add_meta_boxes', [ __CLASS__, 'blokken_weg' ], 999, 2 );
+        add_action( 'woocommerce_admin_order_data_after_shipping_address', [ __CLASS__, 'dhl_weg' ], 1 );
         add_action( 'woocommerce_process_shop_order_meta', [ __CLASS__, 'opslaan' ], 60 );
 
         // De pdf.
@@ -420,8 +423,21 @@ class GTXXL_Maken_Offerte {
     }
 
     public static function paginatitel( $titel ) {
-        /* translators: %s: naam van de website */
-        return self::lijst_tab() ? sprintf( __( 'Offertes &lsaquo; %s &#8212; WordPress', 'gtxxl-maken' ), get_bloginfo( 'name' ) ) : $titel;
+        if ( self::lijst_tab() ) {
+            /* translators: %s: naam van de website */
+            return sprintf( __( 'Offertes &lsaquo; %s &#8212; WordPress', 'gtxxl-maken' ), get_bloginfo( 'name' ) );
+        }
+        // Een open of verlopen offerte: "Offerte A23517" in plaats van "Bestelling bewerken".
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( is_admin() && 'wc-orders' === ( $_GET['page'] ?? '' ) && 'edit' === ( $_GET['action'] ?? '' ) ) {
+            $order = wc_get_order( absint( $_GET['id'] ?? 0 ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            if ( self::is_offerte( $order ) && $order->has_status( [ self::STATUS, self::VERLOPEN ] ) && '' !== self::nummer( $order ) ) {
+                /* translators: 1: offertenummer, 2: naam van de website */
+                return sprintf( __( 'Offerte %1$s &lsaquo; %2$s &#8212; WordPress', 'gtxxl-maken' ), self::nummer( $order ), get_bloginfo( 'name' ) );
+            }
+        }
+
+        return $titel;
     }
 
     public static function lijst_query( $args ) {
@@ -459,6 +475,44 @@ class GTXXL_Maken_Offerte {
     /* ------------------------------------------------------------------ */
     /* Backoffice                                                           */
     /* ------------------------------------------------------------------ */
+
+    /** Blokken in het bestelscherm die bij een offerte niet horen (verzenden, retouren, factuur). */
+    const BLOKKEN_WEG = [
+        'gtxxl-packgo-zendingen',     // DHL-zendingen
+        'gtxxl-packgo-opmerkingen',   // Pack & Go: interne opmerkingen
+        'gtxxl-palletzending',        // Palletzending
+        'gtxxl-retouren-box',         // Retouren
+        'gtxxl-factuur-opnieuw',      // Factuur opnieuw versturen
+        'wpo_wcpdf-data-input-box',   // PDF document gegevens (factuur, pakbon)
+        'wpo_ips-edi-box',            // E-documenten
+        'wpo_wcpdf_send_emails',      // Verzend e-mail bestelling
+        'woocommerce-order-downloads', // Rechten voor downloadbaar product
+    ];
+
+    /** Is dit een offerte die nog openstaat of verlopen is (en dus nog geen bestelling)? */
+    private static function nog_offerte( $order ): bool {
+        return self::is_offerte( $order ) && ! $order->is_paid() && $order->has_status( [ self::STATUS, self::VERLOPEN ] );
+    }
+
+    public static function blokken_weg( $scherm = '', $object = null ): void {
+        $order = $object instanceof WC_Order ? $object : ( $object instanceof WP_Post ? wc_get_order( $object->ID ) : null );
+        if ( ! self::nog_offerte( $order ) ) {
+            return;
+        }
+        foreach ( self::BLOKKEN_WEG as $blok ) {
+            foreach ( [ 'normal', 'side', 'advanced' ] as $plek ) {
+                remove_meta_box( $blok, $scherm, $plek );
+            }
+        }
+    }
+
+    /** In de adreskolom: geen adrescontrole van DHL en geen "Berichten van DHL" bij een offerte. */
+    public static function dhl_weg( $order ): void {
+        if ( self::nog_offerte( $order ) ) {
+            remove_action( 'woocommerce_admin_order_data_after_shipping_address', [ 'GTXXL_PackGo_Address', 'ordervak' ] );
+            remove_action( 'woocommerce_admin_order_data_after_shipping_address', 'gtxxl_dhl_consent_admin' );
+        }
+    }
 
     public static function acties( $acties, $order = null ) {
         if ( self::is_offerte( $order ) && $order->has_status( self::STATUS ) && $order->get_billing_email() ) {
@@ -532,6 +586,8 @@ class GTXXL_Maken_Offerte {
                 esc_html( __( 'Geldig tot en met', 'gtxxl-maken' ) ),
                 esc_attr( self::tot( $order ) )
             );
+            // Opent het venster van "Snelle offerte", ingevuld met deze offerte (assets/maken.js).
+            printf( '<p class="gtxxl-offerte-wijzig"><button type="button" class="button button-primary" id="gtxxl-bm-wijzig">%s</button></p>', esc_html( __( 'Offerte wijzigen', 'gtxxl-maken' ) ) );
         }
         echo '</div>';
     }

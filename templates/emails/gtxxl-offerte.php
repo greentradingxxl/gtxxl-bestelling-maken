@@ -88,9 +88,15 @@ do_action( 'woocommerce_email_header', $email_heading, $email ); ?>
 <p><?php echo esc_html( $gtxxl_t['intro'] ); ?></p>
 
 <?php if ( '' !== trim( $bericht ) ) : ?>
-	<table class="gtxxl-bank" cellspacing="0" cellpadding="0" border="0" width="100%" style="width:100%; margin:0 0 18px; border:1px solid #dde4df; border-radius:8px; border-collapse:separate; background-color:#f7f9f6;">
+	<table class="gtxxl-bank" cellspacing="0" cellpadding="0" border="0" width="100%" style="width:100%; margin:0; border:1px solid #dde4df; border-radius:8px; border-collapse:separate; background-color:#f7f9f6;">
 		<tr>
-			<td style="padding:14px 16px; text-align:left; color:#1e1e1e; font-size:15px; line-height:150%;"><?php echo wp_kses( nl2br( esc_html( $bericht ) ), array( 'br' => array() ) ); ?></td>
+			<td style="padding:14px 16px; text-align:left; color:#1e1e1e; font-size:15px; line-height:150%; -ms-hyphens:none; hyphens:none; word-break:normal;"><?php echo wp_kses( nl2br( esc_html( $bericht ) ), array( 'br' => array() ) ); ?></td>
+		</tr>
+	</table>
+	<?php // Afstand tot de kop eronder: Outlook negeert de marge onder een tabel, een lege cel met vaste hoogte niet. ?>
+	<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="width:100%;">
+		<tr>
+			<td height="22" style="height:22px; padding:0; font-size:1px; line-height:22px; mso-line-height-rule:exactly;">&nbsp;</td>
 		</tr>
 	</table>
 <?php endif; ?>
