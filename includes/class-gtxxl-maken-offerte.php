@@ -34,6 +34,9 @@ class GTXXL_Maken_Offerte {
         add_filter( 'woocommerce_valid_order_statuses_for_payment_complete', [ __CLASS__, 'mag_afronden' ] );
         add_action( 'woocommerce_order_status_changed', [ __CLASS__, 'na_betaling' ], 5, 4 );
         add_action( 'template_redirect', [ __CLASS__, 'betaalpagina' ] );
+        // De hoeveelheid in een offerte is afgesproken: betalen lukt ook als de voorraad te laag is (dan gaat ze onder nul).
+        add_filter( 'woocommerce_pay_order_product_in_stock', [ __CLASS__, 'voorraad_geen_bezwaar' ], 20, 3 );
+        add_filter( 'woocommerce_pay_order_product_has_enough_stock', [ __CLASS__, 'voorraad_geen_bezwaar' ], 20, 3 );
         add_action( 'before_woocommerce_pay_form', [ __CLASS__, 'op_betaalpagina' ] );
 
         // Bestelnummer: een offerte krijgt pas een V-nummer als ze een bestelling wordt; tot dan het offertenummer.
@@ -228,6 +231,15 @@ class GTXXL_Maken_Offerte {
             10,
             2
         );
+    }
+
+    /**
+     * Op de betaalpagina controleert WooCommerce of er genoeg voorraad is. Voor een offerte niet: de hoeveelheid is met
+     * de klant afgesproken (het venster waarschuwt bij het maken al als er te weinig is), en na betaling gaat de
+     * voorraad desnoods onder nul, zodat zichtbaar is wat er besteld moet worden.
+     */
+    public static function voorraad_geen_bezwaar( $genoeg, $product = null, $order = null ) {
+        return $genoeg || self::als_offerte_gemaakt( $order );
     }
 
     /** Boven het betaalformulier: dat het om een offerte gaat en tot wanneer ze geldig is. */
