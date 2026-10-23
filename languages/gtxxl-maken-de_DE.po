@@ -382,8 +382,6 @@ msgstr "Schnelles Angebot"
 msgid "Offerte maken"
 msgstr "Angebot erstellen"
 
-msgid "Producten krijgen de prijs van nu; de prijs per stuk kun je aanpassen. De offerte krijgt de status \"Offerte\". Betaalt de klant via de link, dan wordt het een gewone bestelling en gaat de voorraad eraf."
-msgstr "Produkte erhalten den aktuellen Preis; den Preis pro Stück kannst du anpassen. Das Angebot erhält den Status „Angebot“. Bezahlt der Kunde über den Link, wird daraus eine normale Bestellung und der Bestand wird abgebucht."
 
 msgid "Offertes"
 msgstr "Angebote"

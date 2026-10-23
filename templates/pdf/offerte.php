@@ -129,15 +129,21 @@ defined( 'ABSPATH' ) || exit;
 	<div class="notes">
 		<div class="no-borders wrapper">
 			<?php do_action( 'wpo_wcpdf_before_customer_notes', $this->get_type(), $this->order ); ?>
-			<div class="customer-notes">
-				<?php if ( '' !== $this->get_valid_text() ) : ?>
-					<p><?php echo esc_html( $this->get_valid_text() ); ?></p>
-				<?php endif; ?>
-			</div>
+			<div class="customer-notes"></div>
 			<?php do_action( 'wpo_wcpdf_after_customer_notes', $this->get_type(), $this->order ); ?>
 		</div>
 	</div>
 </div>
+
+<?php // De geldigheid onder de totalen, over de volle breedte: naast het totalenblok stond ze er te dicht tegenaan. ?>
+<?php if ( '' !== $this->get_valid_text() ) : ?>
+	<div class="offerte-geldig" style="clear: both; margin-top: 12mm; color: #555555;">
+		<?php
+		// "E-Mail" niet afbreken bij het streepje.
+		echo str_replace( 'E-Mail', '<span style="white-space: nowrap;">E-Mail</span>', esc_html( $this->get_valid_text() ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		?>
+	</div>
+<?php endif; ?>
 
 <div class="bottom-spacer"></div>
 

@@ -306,9 +306,7 @@ class GTXXL_Maken_Admin {
                                 <select id="gtxxl-bm-zoek" class="gtxxl-wz-zoeker" style="width:100%;" data-placeholder="<?php echo esc_attr( __( 'Zoek op naam of artikelnummer…', 'gtxxl-maken' ) ); ?>"></select>
                             </div>
                             <p class="gtxxl-wz__uitleg" data-alleen="kopie"><?php echo esc_html( __( 'Wat uit de oude bestelling komt, houdt de prijs die de klant destijds betaalde; wat je toevoegt, krijgt de prijs van nu. De prijs per stuk kun je aanpassen.', 'gtxxl-maken' ) ); ?></p>
-                            <p class="gtxxl-wz__uitleg" data-alleen="nieuw"><?php echo esc_html( __( 'Producten krijgen de prijs van nu; de prijs per stuk kun je aanpassen. De bestelling krijgt de status "Wachtend op betaling".', 'gtxxl-maken' ) ); ?></p>
-                            <p class="gtxxl-wz__uitleg" data-alleen="offerte"><?php echo esc_html( __( 'Producten krijgen de prijs van nu; de prijs per stuk kun je aanpassen. De offerte krijgt de status "Offerte". Betaalt de klant via de link, dan wordt het een gewone bestelling en gaat de voorraad eraf.', 'gtxxl-maken' ) ); ?></p>
-                        </div>
+                            <p class="gtxxl-wz__uitleg" data-alleen="nieuw"><?php echo esc_html( __( 'Producten krijgen de prijs van nu; de prijs per stuk kun je aanpassen. De bestelling krijgt de status "Wachtend op betaling".', 'gtxxl-maken' ) ); ?></p>                        </div>
                     </div>
 
                     <div class="gtxxl-wz__rechts">
