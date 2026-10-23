@@ -131,6 +131,19 @@ class GTXXL_Maken_Admin {
                 'totaal'       => __( 'Totaal', 'gtxxl-maken' ),
                 'korting'      => __( 'Korting', 'gtxxl-maken' ),
                 'regelKorting' => __( 'Korting op dit product in procenten', 'gtxxl-maken' ),
+                'rekenhulp'    => __( 'Prijs berekenen met inkoop en marge', 'gtxxl-maken' ),
+                'inkoopExcl'   => __( 'Inkoopprijs excl. btw', 'gtxxl-maken' ),
+                'marge'        => __( 'Marge', 'gtxxl-maken' ),
+                /* translators: %s: btw-percentage */
+                'prijsIncl'    => __( 'Prijs per stuk incl. %s btw', 'gtxxl-maken' ),
+                'prijsZonder'  => __( 'Prijs per stuk (zonder btw)', 'gtxxl-maken' ),
+                /* translators: %s: bedrag */
+                'normaalPrijs' => __( 'Gewone prijs %s', 'gtxxl-maken' ),
+                /* translators: %s: bedrag */
+                'winstStuk'    => __( 'Winst per stuk %s', 'gtxxl-maken' ),
+                'rekenUitleg'  => __( 'Zoals in productbeheer: inkoop × (1 + marge) × btw = prijs. De inkoopprijs pas je hier alleen aan om te rekenen; het product verandert niet.', 'gtxxl-maken' ),
+                'ok'           => __( 'OK', 'gtxxl-maken' ),
+                'annuleren'    => __( 'Annuleren', 'gtxxl-maken' ),
                 /* translators: %s: bedrag */
                 'metKorting'   => __( 'Met korting %s', 'gtxxl-maken' ),
                 /* translators: 1: inkoopprijs, 2: opslag in procenten */
@@ -439,6 +452,8 @@ class GTXXL_Maken_Admin {
                 'met_korting' => $r['met_korting'],
                 'inkoop'      => $r['inkoop'],
                 'opslag'      => $r['inkoop'] ? round( ( $netto_stuk / $r['inkoop'] - 1 ) * 100, 1 ) : null,
+                // Prijs met btw / prijs zonder btw voor deze klant (1,19 / 1,21 / 1 bij btw-vrij), voor de rekenhulp.
+                'btw'         => (float) $r['netto'] > 0 ? round( ( (float) $r['netto'] + array_sum( $r['tax'] ) ) / (float) $r['netto'], 4 ) : 1.0,
             ];
         }
         $v = $plan['verzend'];

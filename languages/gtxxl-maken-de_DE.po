@@ -442,3 +442,30 @@ msgstr "%d Produkt(e) ohne Einkaufspreis nicht berücksichtigt"
 
 msgid "Inkoop %1$s · winst %2$s · opslag %3$s"
 msgstr "Einkauf %1$s · Gewinn %2$s · Aufschlag %3$s"
+
+msgid "Prijs berekenen met inkoop en marge"
+msgstr "Preis mit Einkauf und Marge berechnen"
+
+msgid "Inkoopprijs excl. btw"
+msgstr "Einkaufspreis netto"
+
+msgid "Marge"
+msgstr "Marge"
+
+msgid "Prijs per stuk incl. %s btw"
+msgstr "Preis pro Stück inkl. %s MwSt."
+
+msgid "Prijs per stuk (zonder btw)"
+msgstr "Preis pro Stück (ohne MwSt.)"
+
+msgid "Gewone prijs %s"
+msgstr "Normaler Preis %s"
+
+msgid "Winst per stuk %s"
+msgstr "Gewinn pro Stück %s"
+
+msgid "Zoals in productbeheer: inkoop × (1 + marge) × btw = prijs. De inkoopprijs pas je hier alleen aan om te rekenen; het product verandert niet."
+msgstr "Wie in der Produktverwaltung: Einkauf × (1 + Marge) × MwSt. = Preis. Den Einkaufspreis änderst du hier nur zum Rechnen; das Produkt bleibt unverändert."
+
+msgid "OK"
+msgstr "OK"

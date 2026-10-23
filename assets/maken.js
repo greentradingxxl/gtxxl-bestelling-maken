@@ -43,9 +43,13 @@
         $.each( zichtbaar(), function ( i, l ) {
             var anders = l.prijs != null;
             var toon = anders ? l.prijs : l.stuk;
+            // Rekenhulp (inkoop, marge, prijs) achter het artikelnummer, zodra de server de regel heeft berekend.
+            var reken = l.inkoopBekend && l.stuk != null && 'kopie' !== modus
+                ? ' <button type="button" class="gtxxl-bm__reken" data-sleutel="' + veilig( l.sleutel ) + '" aria-label="' + t( 'rekenhulp' ) + '" title="' + t( 'rekenhulp' ) + '"><span class="dashicons dashicons-tag" aria-hidden="true"></span></button>'
+                : '';
             html += '<tr class="gtxxl-wz__regel">' +
                 '<td class="gtxxl-wz__foto">' + ( l.foto ? '<img src="' + veilig( l.foto ) + '" alt="">' : '' ) + '</td>' +
-                '<td class="gtxxl-wz__naam"><strong>' + veilig( l.naam ) + '</strong>' + ( l.sku ? '<span>' + veilig( l.sku ) + '</span>' : '' ) +
+                '<td class="gtxxl-wz__naam"><strong>' + veilig( l.naam ) + '</strong>' + ( l.sku || reken ? '<span>' + veilig( l.sku ) + reken + '</span>' : '' ) +
                     ( anders && l.standaard != null ? '<em>' + veilig( tp( 'normaal', geld( l.standaard ) ) ) + '</em>' : '' ) +
                     ( ! anders && l.metKorting != null ? '<em class="gtxxl-bm__metkorting">' + veilig( tp( 'metKorting', geld( l.metKorting ) ) ) + '</em>' : '' ) +
                     // Alleen voor de medewerker: inkoop per stuk en opslag, zoals in het productscherm.
@@ -165,7 +169,7 @@
                 $melding.html( $.map( uitkomst.let_op || [], function ( tekst ) { return '<p class="gtxxl-wz__waarschuwing">' + veilig( tekst ) + '</p>'; } ).join( '' ) );
                 $.each( uitkomst.regels, function ( i, r ) {
                     var l = vind( r.sleutel );
-                    if ( l ) { l.naam = r.naam; l.sku = r.sku; l.foto = r.foto; l.standaard = r.standaard; l.stuk = r.standaard; l.metKorting = r.met_korting; l.inkoop = r.inkoop; l.opslag = r.opslag; l.inkoopBekend = true; }
+                    if ( l ) { l.naam = r.naam; l.sku = r.sku; l.foto = r.foto; l.standaard = r.standaard; l.stuk = r.standaard; l.metKorting = r.met_korting; l.inkoop = r.inkoop; l.opslag = r.opslag; l.btw = r.btw || 1; l.inkoopBekend = true; }
                 } );
                 teken();
             } ).fail( function () {
@@ -403,6 +407,88 @@
         } );
     }
 
+    /* ---------------------------------------------------------------- */
+    /* Rekenhulp: inkoop, marge en prijs van één product                 */
+    /* ---------------------------------------------------------------- */
+
+    // Zoals in productbeheer: inkoop × (1 + marge%) × btw = prijs, maar met de btw van deze klant in plaats van
+    // altijd 1,19. Inkoop wijzigen → marge opnieuw (prijs blijft), marge wijzigen → prijs, prijs wijzigen → marge.
+    // OK zet de prijs in het prijsvak van het product.
+    var $reken = null, rekenLijn = null;
+    var leesGetal = function ( waarde ) { return parseFloat( String( waarde == null ? '' : waarde ).replace( /\s|€|%/g, '' ).replace( ',', '.' ) ); };
+    var r2 = function ( x ) { return Math.round( x * 100 ) / 100; };
+    var komma = function ( x, dec ) { return x.toFixed( dec ).replace( '.', ',' ); };
+
+    function rekenhulp() {
+        $reken = $( '<div class="gtxxl-bm-reken" id="gtxxl-bm-reken" hidden>' +
+            '<div class="gtxxl-bm-reken__doos" role="dialog" aria-modal="true" aria-labelledby="gtxxl-bm-reken-titel">' +
+                '<h3 id="gtxxl-bm-reken-titel"></h3>' +
+                '<p class="gtxxl-bm-reken__normaal"></p>' +
+                '<label class="gtxxl-bm-reken__rij" for="gtxxl-bm-reken-inkoop"><span>' + t( 'inkoopExcl' ) + '</span><span class="gtxxl-bm-reken__veld">' + veilig( G.valuta ) + '<input type="text" inputmode="decimal" id="gtxxl-bm-reken-inkoop"></span></label>' +
+                '<label class="gtxxl-bm-reken__rij" for="gtxxl-bm-reken-marge"><span>' + t( 'marge' ) + '</span><span class="gtxxl-bm-reken__veld"><input type="text" inputmode="decimal" id="gtxxl-bm-reken-marge">%</span></label>' +
+                '<label class="gtxxl-bm-reken__rij" for="gtxxl-bm-reken-prijs"><span id="gtxxl-bm-reken-prijslabel"></span><span class="gtxxl-bm-reken__veld">' + veilig( G.valuta ) + '<input type="text" inputmode="decimal" id="gtxxl-bm-reken-prijs"></span></label>' +
+                '<p class="gtxxl-bm-reken__winst"></p>' +
+                '<p class="gtxxl-wz__klein">' + t( 'rekenUitleg' ) + '</p>' +
+                '<p class="gtxxl-bm-reken__knoppen"><button type="button" class="button button-primary" id="gtxxl-bm-reken-ok">' + t( 'ok' ) + '</button><button type="button" class="button-link" id="gtxxl-bm-reken-terug">' + t( 'annuleren' ) + '</button></p>' +
+            '</div></div>' ).appendTo( $overlay );
+
+        var $inkoop = $reken.find( '#gtxxl-bm-reken-inkoop' ), $marge = $reken.find( '#gtxxl-bm-reken-marge' ), $prijs = $reken.find( '#gtxxl-bm-reken-prijs' );
+        var btw = function () { return rekenLijn && rekenLijn.btw ? rekenLijn.btw : 1; };
+        var winst = function () {
+            var c = leesGetal( $inkoop.val() ), p = leesGetal( $prijs.val() );
+            $reken.find( '.gtxxl-bm-reken__winst' ).text( ! isNaN( c ) && c > 0 && ! isNaN( p ) ? tp( 'winstStuk', geld( p / btw() - c ) ) : '' );
+        };
+        var margeUitPrijs = function () {
+            var c = leesGetal( $inkoop.val() ), p = leesGetal( $prijs.val() );
+            if ( ! isNaN( c ) && c > 0 && ! isNaN( p ) ) { $marge.val( komma( r2( ( p / c / btw() - 1 ) * 100 ), 1 ) ); }
+            winst();
+        };
+        $inkoop.on( 'input', margeUitPrijs );
+        $prijs.on( 'input', margeUitPrijs );
+        $marge.on( 'input', function () {
+            var c = leesGetal( $inkoop.val() ), m = leesGetal( $marge.val() );
+            if ( ! isNaN( c ) && c > 0 && ! isNaN( m ) ) { $prijs.val( komma( r2( c * ( 1 + m / 100 ) * btw() ), 2 ) ); }
+            winst();
+        } );
+        $reken.on( 'focus', 'input', function () { var veld = this; setTimeout( function () { veld.select(); }, 0 ); } );
+        $reken.on( 'keydown', 'input', function ( e ) { if ( 'Enter' === e.key ) { e.preventDefault(); $( '#gtxxl-bm-reken-ok' ).trigger( 'click' ); } } );
+        $reken.on( 'click', '#gtxxl-bm-reken-terug', rekenDicht );
+        $reken.on( 'click', '#gtxxl-bm-reken-ok', function () {
+            var p = leesGetal( $prijs.val() ), l = rekenLijn;
+            rekenDicht();
+            if ( ! l || isNaN( p ) || p < 0 ) { return; }
+            p = r2( p );
+            // Gelijk aan de gewone prijs: weer de gewone prijs; anders een eigen prijs (een eigen korting vervalt).
+            l.prijs = l.standaard != null && Math.abs( p - l.standaard ) < 0.005 ? null : p;
+            l.korting = null;
+            herreken();
+        } );
+        // Sluiten door ernaast te klikken: alleen als de klik buiten het venstertje begint én eindigt.
+        var buiten = false;
+        $reken.on( 'mousedown', function ( e ) { buiten = e.target === this; } );
+        $reken.on( 'mouseup', function ( e ) { if ( buiten && e.target === this ) { rekenDicht(); } buiten = false; } );
+        $overlay.on( 'click', '.gtxxl-bm__reken', function () { rekenOpen( vind( $( this ).data( 'sleutel' ) ) ); } );
+    }
+
+    function rekenOpen( l ) {
+        if ( ! l ) { return; }
+        rekenLijn = l;
+        var btw = l.btw || 1, p = l.prijs != null ? l.prijs : ( l.metKorting != null ? l.metKorting : l.stuk );
+        var procent = Math.round( ( btw - 1 ) * 100 );
+        $reken.find( '#gtxxl-bm-reken-titel' ).text( l.naam );
+        $reken.find( '.gtxxl-bm-reken__normaal' ).text( l.standaard != null ? tp( 'normaalPrijs', geld( l.standaard ) ) : '' );
+        $reken.find( '#gtxxl-bm-reken-prijslabel' ).text( procent > 0 ? tp( 'prijsIncl', procent + ' %' ) : G.t.prijsZonder );
+        $reken.find( '#gtxxl-bm-reken-inkoop' ).val( l.inkoop != null ? komma( l.inkoop, 2 ) : '' );
+        $reken.find( '#gtxxl-bm-reken-prijs' ).val( p != null ? komma( p, 2 ) : '' ).trigger( 'input' );
+        $reken.prop( 'hidden', false );
+        $reken.find( '#gtxxl-bm-reken-marge' ).trigger( 'focus' );
+    }
+
+    function rekenDicht() {
+        if ( $reken ) { $reken.prop( 'hidden', true ); }
+        rekenLijn = null;
+    }
+
     $( function () {
         // Een gemaakte bestelling houdt de taal van de klant, ook als de medewerker haar opslaat.
         if ( G.taal ) {
@@ -446,7 +532,12 @@
         var buitenBegonnen = false;
         $overlay.on( 'mousedown', function ( e ) { buitenBegonnen = e.target === this; } );
         $overlay.on( 'mouseup', function ( e ) { if ( buitenBegonnen && e.target === this ) { sluit(); } buitenBegonnen = false; } );
-        $( document ).on( 'keydown', function ( e ) { if ( 'Escape' === e.key && $overlay.is( ':visible' ) && ! $( '.select2-container--open' ).length ) { sluit(); } } );
+        $( document ).on( 'keydown', function ( e ) {
+            if ( 'Escape' !== e.key || ! $overlay.is( ':visible' ) || $( '.select2-container--open' ).length ) { return; }
+            // Eerst de rekenhulp dicht, pas daarna het venster.
+            if ( $reken && ! $reken.prop( 'hidden' ) ) { rekenDicht(); } else { sluit(); }
+        } );
+        rekenhulp();
 
         // Aantal, prijs en weghalen.
         var zetAantal = function ( sleutel, aantal ) {
