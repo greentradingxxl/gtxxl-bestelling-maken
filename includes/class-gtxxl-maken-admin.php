@@ -130,6 +130,7 @@ class GTXXL_Maken_Admin {
                 'eerstKlant'   => __( 'Kies eerst een klant.', 'gtxxl-maken' ),
                 'totaal'       => __( 'Totaal', 'gtxxl-maken' ),
                 'korting'      => __( 'Korting', 'gtxxl-maken' ),
+                'regelKorting' => __( 'Korting op dit product in procenten', 'gtxxl-maken' ),
                 /* translators: %s: bedrag */
                 'metKorting'   => __( 'Met korting %s', 'gtxxl-maken' ),
                 /* translators: 1: inkoopprijs, 2: opslag in procenten */
@@ -320,7 +321,7 @@ class GTXXL_Maken_Admin {
                         <div data-alleen="nieuw offerte">
                             <h3><?php echo esc_html( __( 'Korting', 'gtxxl-maken' ) ); ?></h3>
                             <label class="gtxxl-bm__korting"><input type="text" inputmode="decimal" id="gtxxl-bm-korting" placeholder="0" aria-label="<?php echo esc_attr( __( 'Korting op de producten in procenten', 'gtxxl-maken' ) ); ?>"> <span>% <?php echo esc_html( __( 'op de producten', 'gtxxl-maken' ) ); ?></span></label>
-                            <p class="gtxxl-wz__klein"><?php echo esc_html( __( 'Niet op producten waarvan je zelf de prijs hebt aangepast, en niet op de verzendkosten. De klant ziet de gewone prijs met de korting eronder.', 'gtxxl-maken' ) ); ?></p>
+                            <p class="gtxxl-wz__klein"><?php echo esc_html( __( 'Voor alle producten zonder eigen prijs of eigen korting (het vakje % bij het product), en niet op de verzendkosten. De klant ziet de gewone prijs met de korting eronder.', 'gtxxl-maken' ) ); ?></p>
                         </div>
                         <div data-alleen="kopie">
                             <label class="gtxxl-wz__vink"><input type="checkbox" id="gtxxl-bm-niet-verzenden"> <?php echo esc_html( __( 'Bestelling hoeft niet meer verzonden te worden', 'gtxxl-maken' ) ); ?></label>
@@ -370,10 +371,13 @@ class GTXXL_Maken_Admin {
         $lijst = static function ( $sleutel ) {
             $uit = [];
             foreach ( (array) wp_unslash( $_POST[ $sleutel ] ?? [] ) as $id => $keuze ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-                $prijs = is_array( $keuze ) ? (string) ( $keuze['prijs'] ?? '' ) : '';
+                $prijs   = is_array( $keuze ) ? (string) ( $keuze['prijs'] ?? '' ) : '';
+                $korting = is_array( $keuze ) ? (string) ( $keuze['korting'] ?? '' ) : '';
                 $uit[ absint( $id ) ] = [
-                    'aantal' => max( 0, min( 9999, (int) ( is_array( $keuze ) ? ( $keuze['aantal'] ?? 0 ) : $keuze ) ) ),
-                    'prijs'  => '' === $prijs ? null : max( 0.0, min( 999999.0, (float) str_replace( ',', '.', $prijs ) ) ),
+                    'aantal'  => max( 0, min( 9999, (int) ( is_array( $keuze ) ? ( $keuze['aantal'] ?? 0 ) : $keuze ) ) ),
+                    'prijs'   => '' === $prijs ? null : max( 0.0, min( 999999.0, (float) str_replace( ',', '.', $prijs ) ) ),
+                    // Korting in procenten op dit product; leeg = de korting op alle producten (als die er is).
+                    'korting' => '' === $korting ? null : max( 0.0, min( 100.0, (float) str_replace( ',', '.', $korting ) ) ),
                 ];
             }
 

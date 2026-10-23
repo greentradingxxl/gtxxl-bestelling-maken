@@ -282,21 +282,24 @@ class GTXXL_Maken {
             $prijs     = isset( $keuze['prijs'] ) && '' !== $keuze['prijs'] && null !== $keuze['prijs'] ? max( 0.0, round( (float) $keuze['prijs'], 2 ) ) : null;
             $sub       = null;
             $met_korting = null;
+            $regel_korting = 0.0;
             if ( null !== $prijs && abs( $prijs - $standaard ) >= 0.005 ) {
                 $deel = self::uit_bruto( $klant, (string) $product->get_tax_class(), $product->is_taxable(), $prijs * $aantal );
             } else {
                 $prijs = $standaard;
                 $nu    = GTXXL_Wijzigen_Plan::prijs( $klant, $product, $aantal );
                 $deel  = [ 'netto' => (float) $nu['netto'], 'tax' => (array) $nu['tax'] ];
-                // Korting in procenten: alleen op de gewone prijs, niet op een zelf ingevulde prijs. De gewone prijs
-                // blijft het subtotaal van de regel, zodat de klant de korting ziet (mail, pdf, factuur).
-                if ( $korting > 0 ) {
+                // Korting in procenten: alleen op de gewone prijs, niet op een zelf ingevulde prijs. Een korting bij het
+                // product gaat voor de korting op alle producten. De gewone prijs blijft het subtotaal van de regel,
+                // zodat de klant de korting ziet (mail, pdf, factuur).
+                $regel_korting = isset( $keuze['korting'] ) && null !== $keuze['korting'] && (float) $keuze['korting'] > 0 ? min( 100.0, round( (float) $keuze['korting'], 2 ) ) : $korting;
+                if ( $regel_korting > 0 ) {
                     $sub         = $deel;
-                    $met_korting = round( $standaard * ( 1 - $korting / 100 ), 2 );
+                    $met_korting = round( $standaard * ( 1 - $regel_korting / 100 ), 2 );
                     $deel        = self::uit_bruto( $klant, (string) $product->get_tax_class(), $product->is_taxable(), $met_korting * $aantal );
                 }
             }
-            $regels[] = [ 'sleutel' => 'p' . (int) $product_id, 'item' => null, 'product' => $product, 'naam' => wp_strip_all_tags( $product->get_name() ), 'sku' => (string) $product->get_sku(), 'aantal' => $aantal, 'stuk' => $prijs, 'standaard' => $standaard, 'tax_class' => (string) $product->get_tax_class(), 'met_korting' => $met_korting, 'sub_netto' => $sub ? (float) $sub['netto'] : null, 'sub_tax' => $sub ? (array) $sub['tax'] : null, 'inkoop' => self::inkoop( $product ) ] + $deel + GTXXL_Wijzigen_Plan::foto( $product );
+            $regels[] = [ 'sleutel' => 'p' . (int) $product_id, 'item' => null, 'product' => $product, 'naam' => wp_strip_all_tags( $product->get_name() ), 'sku' => (string) $product->get_sku(), 'aantal' => $aantal, 'stuk' => $prijs, 'standaard' => $standaard, 'tax_class' => (string) $product->get_tax_class(), 'met_korting' => $met_korting, 'korting_pct' => $met_korting ? $regel_korting : 0.0, 'sub_netto' => $sub ? (float) $sub['netto'] : null, 'sub_tax' => $sub ? (array) $sub['tax'] : null, 'inkoop' => self::inkoop( $product ) ] + $deel + GTXXL_Wijzigen_Plan::foto( $product );
             $gewicht += self::gewicht( $product, $aantal );
             $toeslag_stuks += GTXXL_Wijzigen_Plan::toeslag_geldt( $product ) ? $aantal : 0;
         }
@@ -531,8 +534,14 @@ class GTXXL_Maken {
             if ( ! empty( $in['niet_verzenden'] ) ) {
                 $delen[] = 'hoeft niet verzonden te worden (na betaling direct afgerond)';
             }
-            if ( $plan['korting'] > 0 && $plan['korting_bedrag'] > 0 ) {
-                $delen[] = sprintf( 'korting %s%% op de producten (%s)', str_replace( '.', ',', (string) $plan['korting'] ), self::bedrag( $plan['korting_bedrag'], $nieuw ) );
+            if ( $plan['korting_bedrag'] > 0 ) {
+                $per = [];
+                foreach ( $plan['regels'] as $r ) {
+                    if ( ! empty( $r['korting_pct'] ) ) {
+                        $per[] = sprintf( '%s %s%%', $r['naam'], str_replace( '.', ',', (string) $r['korting_pct'] ) );
+                    }
+                }
+                $delen[] = sprintf( 'korting %s (%s)', self::bedrag( $plan['korting_bedrag'], $nieuw ), implode( '; ', $per ) );
             }
             foreach ( $plan['regels'] as $r ) {
                 if ( abs( $r['stuk'] - $r['standaard'] ) >= 0.005 ) {

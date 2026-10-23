@@ -53,7 +53,12 @@
                         ? veilig( String( G.t.inkoopRegel || '' ).replace( '%1$s', geld( l.inkoop ) ).replace( '%2$s', l.opslag == null ? '–' : String( l.opslag ).replace( '.', ',' ) + ' %' ) )
                         : t( 'geenInkoop' ) ) + '</small>' : '' ) + '</td>' +
                 '<td class="gtxxl-wz__prijs"><span class="gtxxl-bm__prijs' + ( anders ? ' is-anders' : '' ) + '">' + veilig( G.valuta ) +
-                    '<input type="text" inputmode="decimal" data-sleutel="' + veilig( l.sleutel ) + '" value="' + ( toon == null ? '' : getal( toon ) ) + '"' + ( toon == null ? ' disabled' : '' ) + ' aria-label="' + t( 'prijs' ) + '" title="' + t( 'prijs' ) + '"></span></td>' +
+                    '<input type="text" inputmode="decimal" data-sleutel="' + veilig( l.sleutel ) + '" value="' + ( toon == null ? '' : getal( toon ) ) + '"' + ( toon == null ? ' disabled' : '' ) + ' aria-label="' + t( 'prijs' ) + '" title="' + t( 'prijs' ) + '"></span>' +
+                    // Korting op dit product in procenten (niet bij dupliceren). Leeg = de korting op alle producten,
+                    // die als grijze tekst in het vakje staat.
+                    ( 'extra' === l.soort && 'kopie' !== modus
+                        ? '<span class="gtxxl-bm__regelkorting' + ( l.korting ? ' is-anders' : '' ) + '">−<input type="text" inputmode="decimal" data-sleutel="' + veilig( l.sleutel ) + '" value="' + ( l.korting ? String( l.korting ).replace( '.', ',' ) : '' ) + '" placeholder="' + ( korting && ! anders ? String( korting ).replace( '.', ',' ) : '0' ) + '" aria-label="' + t( 'regelKorting' ) + '" title="' + t( 'regelKorting' ) + '">%</span>'
+                        : '' ) + '</td>' +
                 '<td><span class="gtxxl-wz__aantal" data-sleutel="' + veilig( l.sleutel ) + '">' +
                     '<button type="button" class="button" data-stap="-1" aria-label="' + t( 'minder' ) + '">−</button>' +
                     '<input type="number" min="0" step="1" value="' + l.aantal + '" aria-label="' + t( 'aantal' ) + '">' +
@@ -121,7 +126,7 @@
     function gekozen() {
         var aantallen = {}, extra = {}, lijst = [];
         $.each( zichtbaar(), function ( i, l ) {
-            ( 'regel' === l.soort ? aantallen : extra )[ l.id ] = { aantal: l.aantal, prijs: l.prijs == null ? '' : l.prijs };
+            ( 'regel' === l.soort ? aantallen : extra )[ l.id ] = { aantal: l.aantal, prijs: l.prijs == null ? '' : l.prijs, korting: l.korting ? l.korting : '' };
         } );
         $.each( overig, function ( id, aan ) { if ( aan ) { lijst.push( id ); } } );
         var data = { nonce: G.nonce, soort: modus, aantallen: aantallen, extra: extra, overig: lijst, levering: levering, verzend_prijs: verzendPrijs == null ? '' : verzendPrijs, korting: 'kopie' === modus ? '' : korting };
@@ -182,7 +187,7 @@
         if ( l ) {
             l.aantal++;
         } else {
-            lijnen.push( { sleutel: 'p' + id, soort: 'extra', id: id, naam: naam, sku: '', foto: '', aantal: 1, prijs: null, stuk: null, standaard: null } );
+            lijnen.push( { sleutel: 'p' + id, soort: 'extra', id: id, naam: naam, sku: '', foto: '', aantal: 1, prijs: null, korting: null, stuk: null, standaard: null } );
         }
         herreken();
     }
@@ -470,11 +475,23 @@
             if ( ! l ) { return; }
             // Leeg, onleesbaar of gelijk aan de gewone prijs: terug naar de gewone prijs.
             l.prijs = isNaN( prijs ) || prijs < 0 || ( l.standaard != null && Math.abs( prijs - l.standaard ) < 0.005 ) ? null : Math.round( prijs * 100 ) / 100;
+            // Een eigen prijs en een eigen korting gaan niet samen: de prijs wint.
+            if ( l.prijs != null ) { l.korting = null; }
+            herreken();
+        } );
+        // Korting op één product in procenten; leeg of 0 = weer de korting op alle producten (als die er is).
+        $overlay.on( 'change', '.gtxxl-bm__regelkorting input', function () {
+            var l = vind( $( this ).data( 'sleutel' ) );
+            if ( ! l ) { return; }
+            var p = parseFloat( $.trim( $( this ).val() ).replace( /[−\-%\s]/g, '' ).replace( ',', '.' ) );
+            l.korting = isNaN( p ) || p <= 0 ? null : Math.min( 100, Math.round( p * 100 ) / 100 );
+            // De korting rekent vanaf de gewone prijs, dus een eigen prijs vervalt.
+            if ( l.korting ) { l.prijs = null; }
             herreken();
         } );
         // Aanklikken selecteert het hele bedrag, zodat je er meteen overheen typt.
-        $overlay.on( 'focus', '.gtxxl-bm__prijs input, .gtxxl-wz__aantal input', function () { var veld = this; setTimeout( function () { veld.select(); }, 0 ); } );
-        $overlay.on( 'keydown', '.gtxxl-bm__prijs input, .gtxxl-wz__aantal input', function ( e ) { if ( 'Enter' === e.key ) { e.preventDefault(); $( this ).trigger( 'blur' ); } } );
+        $overlay.on( 'focus', '.gtxxl-bm__prijs input, .gtxxl-bm__regelkorting input, .gtxxl-wz__aantal input', function () { var veld = this; setTimeout( function () { veld.select(); }, 0 ); } );
+        $overlay.on( 'keydown', '.gtxxl-bm__prijs input, .gtxxl-bm__regelkorting input, .gtxxl-wz__aantal input', function ( e ) { if ( 'Enter' === e.key ) { e.preventDefault(); $( this ).trigger( 'blur' ); } } );
         $overlay.on( 'click', '.gtxxl-wz__weg', function () {
             var soort = $( this ).data( 'soort' );
             if ( 'levering' === soort ) {

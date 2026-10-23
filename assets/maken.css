@@ -117,3 +117,9 @@
 .gtxxl-bm__marge small { display: block; margin-top: 2px; color: #787c82; font-size: 11px; }
 .gtxxl-offerte-blok .gtxxl-offerte-marge { margin: 6px 0 0; color: #8a6d3b; font-size: 12px; }
 .gtxxl-bm .gtxxl-wz__rechts [data-alleen="nieuw offerte"] > h3 { margin-top: 18px; }
+/* Korting op één product: klein vakje onder de prijs. */
+.gtxxl-bm__regelkorting { display: inline-flex; align-items: center; gap: 3px; margin-top: 4px; color: #50575e; font-size: 12px; }
+.gtxxl-bm__regelkorting input { width: 46px; min-height: 26px; margin: 0; padding: 0 5px; text-align: right; font-size: 12px; }
+.gtxxl-bm__regelkorting.is-anders input { border-color: #23582c; background: #f3f8f3; }
+.gtxxl-wz__prijs { white-space: nowrap; }
+.gtxxl-wz__prijs .gtxxl-bm__regelkorting { display: flex; justify-content: flex-end; }
