@@ -490,3 +490,12 @@ msgstr "Angebot bearbeiten"
 
 msgid "Offerte %1$s &lsaquo; %2$s &#8212; WordPress"
 msgstr "Angebot %1$s &lsaquo; %2$s &#8212; WordPress"
+
+msgid "De offerte-pdf kan nu niet gemaakt worden (PDF Invoices Pro staat uit of is bijgewerkt). Er is niets aangemaakt."
+msgstr "Das Angebots-PDF kann gerade nicht erstellt werden (PDF Invoices Pro ist deaktiviert oder wurde aktualisiert). Es wurde nichts angelegt."
+
+msgid "De offerte-pdf kan nu niet gemaakt worden (PDF Invoices Pro staat uit of is bijgewerkt). Er is niets gewijzigd."
+msgstr "Das Angebots-PDF kann gerade nicht erstellt werden (PDF Invoices Pro ist deaktiviert oder wurde aktualisiert). Es wurde nichts geändert."
+
+msgid "\"%s\" bestaat niet meer in de winkel en staat na opslaan niet meer in de offerte. Voeg zo nodig een vervangend product toe."
+msgstr "„%s“ gibt es im Shop nicht mehr und steht nach dem Speichern nicht mehr im Angebot. Füge bei Bedarf ein Ersatzprodukt hinzu."

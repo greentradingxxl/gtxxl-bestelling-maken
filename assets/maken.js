@@ -175,7 +175,9 @@
                     var vz = uitkomst.verzend;
                     if ( vz && vz.standaard != null && verzendPrijs != null && Math.abs( verzendPrijs - vz.standaard ) < 0.005 ) { verzendPrijs = null; }
                 }
-                $melding.html( $.map( uitkomst.let_op || [], function ( tekst ) { return '<p class="gtxxl-wz__waarschuwing">' + veilig( tekst ) + '</p>'; } ).join( '' ) );
+                // Bij het wijzigen van een offerte blijft de waarschuwing over verdwenen producten staan.
+                var weg = wijzigen && G.wijzig ? $.map( G.wijzig.weg || [], function ( naam ) { return tp( 'productWeg', naam ); } ) : [];
+                $melding.html( $.map( weg.concat( uitkomst.let_op || [] ), function ( tekst ) { return '<p class="gtxxl-wz__waarschuwing">' + veilig( tekst ) + '</p>'; } ).join( '' ) );
                 $.each( uitkomst.regels, function ( i, r ) {
                     var l = vind( r.sleutel );
                     if ( l ) { l.naam = r.naam; l.sku = r.sku; l.foto = r.foto; l.standaard = r.standaard; l.stuk = r.standaard; l.metKorting = r.met_korting; l.inkoop = r.inkoop; l.opslag = r.opslag; l.btw = r.btw || 1; l.inkoopBekend = true; }
@@ -382,6 +384,8 @@
             verzendPrijs = 'verzenden' === levering ? G.wijzig.verzend : null;
             verzendCheck = true;
             zetKlant( G.wijzig.klant, '' );
+            // Producten die niet meer bestaan, vallen bij opslaan weg: daar vooraf voor waarschuwen.
+            $melding.html( $.map( G.wijzig.weg || [], function ( naam ) { return '<p class="gtxxl-wz__waarschuwing gtxxl-bm__weg">' + veilig( tp( 'productWeg', naam ) ) + '</p>'; } ).join( '' ) );
         } else {
             levering = 'verzenden';
             zetKlant( null );

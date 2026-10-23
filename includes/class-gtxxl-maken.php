@@ -434,6 +434,9 @@ class GTXXL_Maken {
             if ( $plan['totaal'] <= 0 ) {
                 return new WP_Error( 'gratis', __( 'Een offerte van € 0 kan de klant niet accepteren. Maak er een snelle bestelling van.', 'gtxxl-maken' ) );
             }
+            if ( ! GTXXL_Maken_Offerte::pdf_beschikbaar() ) {
+                return new WP_Error( 'pdf', __( 'De offerte-pdf kan nu niet gemaakt worden (PDF Invoices Pro staat uit of is bijgewerkt). Er is niets aangemaakt.', 'gtxxl-maken' ) );
+            }
         }
 
         try {
@@ -571,9 +574,12 @@ class GTXXL_Maken {
         if ( $plan['totaal'] <= 0 ) {
             return new WP_Error( 'gratis', __( 'Een offerte van € 0 kan de klant niet accepteren. Maak er een snelle bestelling van.', 'gtxxl-maken' ) );
         }
+        if ( ! GTXXL_Maken_Offerte::pdf_beschikbaar() ) {
+            return new WP_Error( 'pdf', __( 'De offerte-pdf kan nu niet gemaakt worden (PDF Invoices Pro staat uit of is bijgewerkt). Er is niets gewijzigd.', 'gtxxl-maken' ) );
+        }
 
         try {
-            $was = self::bedrag( (float) $offerte->get_total(), $offerte );
+            $was =self::bedrag( (float) $offerte->get_total(), $offerte );
             $offerte->remove_order_items();
             $offerte->set_customer_id( (int) $klant->get_customer_id() );
             self::klant_naar( $offerte, $klant );

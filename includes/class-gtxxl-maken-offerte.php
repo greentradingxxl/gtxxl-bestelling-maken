@@ -19,6 +19,8 @@ class GTXXL_Maken_Offerte {
     const VERLOPEN = 'offerte-verlopen';
     /** Op de offerte: de laatste dag waarop ze geldig is (Y-m-d). */
     const META_TOT = '_gtxxl_offerte_tot';
+    /** Op een geaccepteerde offerte: wanneer de offerte gemaakt is (ISO-datum); de besteldatum wordt het moment van accepteren. */
+    const META_GEMAAKT = '_gtxxl_offerte_gemaakt';
     const CRON     = 'gtxxl_maken_offertes_verlopen';
     /** Zo lang is een nieuwe offerte standaard geldig. */
     const DAGEN    = 14;
@@ -32,6 +34,8 @@ class GTXXL_Maken_Offerte {
         // Betalen via de betaallink, zolang de offerte geldig is.
         add_filter( 'woocommerce_valid_order_statuses_for_payment', [ __CLASS__, 'mag_betalen' ], 10, 2 );
         add_filter( 'woocommerce_valid_order_statuses_for_payment_complete', [ __CLASS__, 'mag_afronden' ] );
+        // Stripe rondt een betaling (terugkeer na iDEAL/3D Secure en webhook) alleen af bij "wachtend" of "mislukt".
+        add_filter( 'wc_stripe_allowed_payment_processing_statuses', [ __CLASS__, 'stripe_mag_afronden' ], 10, 2 );
         add_action( 'woocommerce_order_status_changed', [ __CLASS__, 'na_betaling' ], 5, 4 );
         add_action( 'template_redirect', [ __CLASS__, 'betaalpagina' ] );
         // De hoeveelheid in een offerte is afgesproken: betalen lukt ook als de voorraad te laag is (dan gaat ze onder nul).
@@ -97,6 +101,11 @@ class GTXXL_Maken_Offerte {
         $tijd = strtotime( $ymd . ' 12:00:00' );
 
         return $tijd ? gmdate( $nl ? 'd-m-Y' : 'd.m.Y', $tijd ) : $ymd;
+    }
+
+    /** Kan de offerte-pdf gemaakt worden (PDF Invoices met Pro geladen, document geregistreerd)? */
+    public static function pdf_beschikbaar(): bool {
+        return function_exists( 'wcpdf_get_document' ) && class_exists( 'GTXXL_Maken_Offerte_Document', false );
     }
 
     /** Het offertenummer van de pdf, of '' als de pdf er nog niet is. */
@@ -178,8 +187,22 @@ class GTXXL_Maken_Offerte {
         return $statussen;
     }
 
+    /**
+     * Geld dat binnen is, moet altijd een bestelling worden: ook als de offerte intussen op "verlopen" is gezet (de
+     * klant begon te betalen vóór middernacht, de bevestiging kwam erna). De geldigheid bewaakt de betaalpagina.
+     */
     public static function mag_afronden( $statussen ) {
         $statussen[] = self::STATUS;
+        $statussen[] = self::VERLOPEN;
+
+        return $statussen;
+    }
+
+    /** Idem voor Stripe, dat een eigen lijst met toegestane statussen heeft (alleen voor offertes). */
+    public static function stripe_mag_afronden( $statussen, $order = null ) {
+        if ( self::als_offerte_gemaakt( $order ) && ! $order->is_paid() ) {
+            $statussen = array_merge( (array) $statussen, [ self::STATUS, self::VERLOPEN ] );
+        }
 
         return $statussen;
     }
@@ -190,14 +213,21 @@ class GTXXL_Maken_Offerte {
      * dus niet vanzelf; daarom wordt die overgang hier alsnog gemeld.
      */
     public static function na_betaling( $order_id, $van, $naar, $order = null ): void {
-        if ( self::STATUS !== $van || ! in_array( $naar, [ 'processing', 'on-hold', 'completed', 'failed' ], true ) ) {
+        if ( ! in_array( $van, [ self::STATUS, self::VERLOPEN ], true ) || ! in_array( $naar, [ 'processing', 'on-hold', 'completed', 'failed' ], true ) ) {
             return;
         }
         $order = $order instanceof WC_Order ? $order : wc_get_order( $order_id );
         if ( 'failed' !== $naar ) {
-            $order->add_order_note( 'Offerte geaccepteerd door de klant.', 0, false );
+            $order->add_order_note( self::STATUS === $van ? 'Offerte geaccepteerd door de klant.' : 'Verlopen offerte omgezet in een bestelling.', 0, false );
         }
         do_action( "woocommerce_order_status_pending_to_{$naar}", $order_id, $order );
+
+        // Een mislukte betaalpoging: de offerte blijft een offerte (en verloopt dus ook gewoon), zodat ze niet als
+        // "mislukt" onbeperkt betaalbaar blijft en uit "Open" verdwijnt. De klant kan het met dezelfde link opnieuw proberen.
+        if ( 'failed' === $naar && self::is_offerte( $order ) ) {
+            $terug = self::verlopen( $order ) ? self::VERLOPEN : self::STATUS;
+            $order->update_status( $terug, 'Betaalpoging mislukt; de offerte staat weer open.' );
+        }
     }
 
     /**
@@ -301,6 +331,13 @@ class GTXXL_Maken_Offerte {
         if ( self::als_offerte_gemaakt( $order ) && ! $order->get_meta( GTXXL_Ordernummer::META_FULL ) ) {
             GTXXL_Ordernummer::assign_order_number( $order );
         }
+        // De besteldatum wordt het moment van accepteren (lijsten, omzet per maand); de offertedatum blijft bewaard.
+        if ( self::als_offerte_gemaakt( $order ) && ! $order->get_meta( self::META_GEMAAKT ) ) {
+            $gemaakt = $order->get_date_created();
+            $order->update_meta_data( self::META_GEMAAKT, $gemaakt ? $gemaakt->date( 'c' ) : '' );
+            $order->set_date_created( time() );
+            $order->save();
+        }
     }
 
     /* ------------------------------------------------------------------ */
@@ -359,7 +396,9 @@ class GTXXL_Maken_Offerte {
         $offerte = [ [ 'key' => self::META_TOT, 'compare' => 'EXISTS' ] ];
         switch ( $tab ) {
             case 'gtxxl-geaccepteerd':
-                return [ 'status' => [ 'wc-processing', 'wc-on-hold', 'wc-completed' ], 'meta_query' => $offerte ]; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+                // Alles wat een bestelling geworden is (ook afhalen en terugbetaald); niet open, verlopen, mislukt of geannuleerd.
+                $niet = [ 'wc-' . self::STATUS, 'wc-' . self::VERLOPEN, 'wc-failed', 'wc-cancelled', 'wc-pending', 'wc-checkout-draft' ];
+                return [ 'status' => array_values( array_diff( array_keys( wc_get_order_statuses() ), $niet ) ), 'meta_query' => $offerte ]; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
             case 'gtxxl-offertes':
                 return [ 'status' => array_keys( wc_get_order_statuses() ), 'meta_query' => $offerte ]; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
             default:
@@ -532,6 +571,11 @@ class GTXXL_Maken_Offerte {
     public static function mail( WC_Order $order, string $bericht = '' ): bool {
         $mails = WC()->mailer()->get_emails();
         if ( ! isset( $mails['GTXXL_Maken_Offerte_Email'] ) || ! $order->get_billing_email() ) {
+            return false;
+        }
+        // Zonder pdf (en dus zonder offertenummer) geen mail: de klant zou een offerte zonder nummer en bijlage krijgen.
+        if ( '' === self::nummer( $order, true ) ) {
+            $order->add_order_note( 'Offerte niet gemaild: de offerte-pdf kon niet gemaakt worden (staat PDF Invoices Pro aan?).', 0, false );
             return false;
         }
 

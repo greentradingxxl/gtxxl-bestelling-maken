@@ -117,6 +117,8 @@ class GTXXL_Maken_Admin {
                 /* translators: %s: e-mailadres */
                 'wijzigMail'   => __( 'Gewijzigde offerte met pdf naar de klant mailen (%s)', 'gtxxl-maken' ),
                 'offerteBewerken' => __( 'Offerte bewerken', 'gtxxl-maken' ),
+                /* translators: %s: productnaam */
+                'productWeg'   => __( '"%s" bestaat niet meer in de winkel en staat na opslaan niet meer in de offerte. Voeg zo nodig een vervangend product toe.', 'gtxxl-maken' ),
                 /* translators: %s: offertenummer */
                 'offerteKop'   => __( 'Offerte %s', 'gtxxl-maken' ),
                 /* translators: %s: bestelnummer */
@@ -208,10 +210,13 @@ class GTXXL_Maken_Admin {
             return null;
         }
         $regels = [];
+        $weg    = [];
         foreach ( $order->get_items() as $item ) {
             $product = $item->get_product();
             $aantal  = max( 1, (int) $item->get_quantity() );
             if ( ! $product ) {
+                // Het product bestaat niet meer: het venster waarschuwt, want na opslaan staat het niet meer in de offerte.
+                $weg[] = wp_strip_all_tags( $item->get_name() );
                 continue;
             }
             $voor      = round( ( (float) $item->get_subtotal() + (float) $item->get_subtotal_tax() ) / $aantal, 2 );
@@ -236,6 +241,7 @@ class GTXXL_Maken_Admin {
             'nummer'   => GTXXL_Maken_Offerte::nummer( $order ),
             'klant'    => GTXXL_Maken_Klant::velden_van( $order ),
             'regels'   => $regels,
+            'weg'      => $weg,
             'levering' => GTXXL_Maken::levering_was( $order ),
             'verzend'  => round( $verzend, 2 ),
             'geldig'   => max( GTXXL_Maken_Offerte::tot( $order ), current_time( 'Y-m-d' ) ),
