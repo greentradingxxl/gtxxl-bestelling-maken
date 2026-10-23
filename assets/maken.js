@@ -15,6 +15,8 @@
     var lijnen = [], overig = {}, levering = 'verzenden', leveringVoor = 'verzenden', klant = null, klantLaatste = '';
     // Zelf ingevulde verzendkosten (inclusief btw), of null: dan gelden de kosten uit de verzendtabel.
     var verzendPrijs = null;
+    // Korting in procenten op de producten (snelle bestelling en offerte), als tekst zoals ingevuld; '' = geen.
+    var korting = '';
     // Wat de server voor deze keuze heeft berekend (null = nog aan het rekenen).
     var uitkomst = null, rekenTimer = null, rekenNr = 0, bezig = false;
     // De productzoeker deelt zijn instelling met het venster "Bestelling wijzigen": bij het sluiten gaat die terug.
@@ -44,7 +46,12 @@
             html += '<tr class="gtxxl-wz__regel">' +
                 '<td class="gtxxl-wz__foto">' + ( l.foto ? '<img src="' + veilig( l.foto ) + '" alt="">' : '' ) + '</td>' +
                 '<td class="gtxxl-wz__naam"><strong>' + veilig( l.naam ) + '</strong>' + ( l.sku ? '<span>' + veilig( l.sku ) + '</span>' : '' ) +
-                    ( anders && l.standaard != null ? '<em>' + veilig( tp( 'normaal', geld( l.standaard ) ) ) + '</em>' : '' ) + '</td>' +
+                    ( anders && l.standaard != null ? '<em>' + veilig( tp( 'normaal', geld( l.standaard ) ) ) + '</em>' : '' ) +
+                    ( ! anders && l.metKorting != null ? '<em class="gtxxl-bm__metkorting">' + veilig( tp( 'metKorting', geld( l.metKorting ) ) ) + '</em>' : '' ) +
+                    // Alleen voor de medewerker: inkoop per stuk en opslag, zoals in het productscherm.
+                    ( l.inkoopBekend ? '<small class="gtxxl-bm__inkoop">' + ( l.inkoop != null
+                        ? veilig( String( G.t.inkoopRegel || '' ).replace( '%1$s', geld( l.inkoop ) ).replace( '%2$s', l.opslag == null ? '–' : String( l.opslag ).replace( '.', ',' ) + ' %' ) )
+                        : t( 'geenInkoop' ) ) + '</small>' : '' ) + '</td>' +
                 '<td class="gtxxl-wz__prijs"><span class="gtxxl-bm__prijs' + ( anders ? ' is-anders' : '' ) + '">' + veilig( G.valuta ) +
                     '<input type="text" inputmode="decimal" data-sleutel="' + veilig( l.sleutel ) + '" value="' + ( toon == null ? '' : getal( toon ) ) + '"' + ( toon == null ? ' disabled' : '' ) + ' aria-label="' + t( 'prijs' ) + '" title="' + t( 'prijs' ) + '"></span></td>' +
                 '<td><span class="gtxxl-wz__aantal" data-sleutel="' + veilig( l.sleutel ) + '">' +
@@ -90,7 +97,15 @@
         $regels.html( html );
 
         var som = uitkomst ? uitkomst.totaal : 0;
-        $totaal.html( '<div class="gtxxl-wz__rij is-slot"><span>' + t( 'totaal' ) + ( uitkomst && uitkomst.btw_vrij ? ' <small>(' + t( 'zonderBtw' ) + ')</small>' : '' ) + '</span><strong>' + ( rekent ? '…' : veilig( geld( heeft || uitkomst ? som : 0 ) ) ) + '</strong></div>' );
+        var kortingRij = ! rekent && uitkomst && uitkomst.korting > 0 ? '<div class="gtxxl-wz__rij"><span>' + t( 'korting' ) + '</span><span>− ' + veilig( geld( uitkomst.korting ) ) + '</span></div>' : '';
+        var m = ! rekent && heeft && uitkomst && uitkomst.marge;
+        var margeBlok = m && ( m.inkoop > 0 || m.onbekend > 0 )
+            ? '<div class="gtxxl-bm__marge">' + ( m.inkoop > 0
+                ? '<div><span>' + t( 'inkoop' ) + ' ' + veilig( geld( m.inkoop ) ) + '</span><span>' + t( 'winst' ) + ' <strong>' + veilig( geld( m.winst ) ) + '</strong>' + ( m.opslag != null ? ' · ' + t( 'opslag' ) + ' ' + veilig( String( m.opslag ).replace( '.', ',' ) ) + ' %' : '' ) + '</span></div>'
+                : '' ) +
+                '<small>' + t( 'zonderBtwVerzend' ) + ( m.onbekend > 0 ? ' · ' + veilig( String( G.t.zonderInkoop || '' ).replace( '%d', m.onbekend ) ) : '' ) + '</small></div>'
+            : '';
+        $totaal.html( kortingRij + '<div class="gtxxl-wz__rij is-slot"><span>' + t( 'totaal' ) + ( uitkomst && uitkomst.btw_vrij ? ' <small>(' + t( 'zonderBtw' ) + ')</small>' : '' ) + '</span><strong>' + ( rekent ? '…' : veilig( geld( heeft || uitkomst ? som : 0 ) ) ) + '</strong></div>' + margeBlok );
         // Totaal € 0: er valt niets te betalen, dus geen betaallink; de bestelling gaat meteen naar "In behandeling".
         // Een offerte van € 0 maakt de server niet.
         var gratis = 'offerte' !== modus && heeft && !! uitkomst && ! rekent && som <= 0;
@@ -109,7 +124,7 @@
             ( 'regel' === l.soort ? aantallen : extra )[ l.id ] = { aantal: l.aantal, prijs: l.prijs == null ? '' : l.prijs };
         } );
         $.each( overig, function ( id, aan ) { if ( aan ) { lijst.push( id ); } } );
-        var data = { nonce: G.nonce, soort: modus, aantallen: aantallen, extra: extra, overig: lijst, levering: levering, verzend_prijs: verzendPrijs == null ? '' : verzendPrijs };
+        var data = { nonce: G.nonce, soort: modus, aantallen: aantallen, extra: extra, overig: lijst, levering: levering, verzend_prijs: verzendPrijs == null ? '' : verzendPrijs, korting: 'kopie' === modus ? '' : korting };
         if ( 'kopie' === modus ) {
             data.order_id = G.kopie.order_id;
             data.niet_verzenden = $( '#gtxxl-bm-niet-verzenden' ).is( ':checked' ) ? '1' : '0';
@@ -145,7 +160,7 @@
                 $melding.html( $.map( uitkomst.let_op || [], function ( tekst ) { return '<p class="gtxxl-wz__waarschuwing">' + veilig( tekst ) + '</p>'; } ).join( '' ) );
                 $.each( uitkomst.regels, function ( i, r ) {
                     var l = vind( r.sleutel );
-                    if ( l ) { l.naam = r.naam; l.sku = r.sku; l.foto = r.foto; l.standaard = r.standaard; l.stuk = r.standaard; }
+                    if ( l ) { l.naam = r.naam; l.sku = r.sku; l.foto = r.foto; l.standaard = r.standaard; l.stuk = r.standaard; l.metKorting = r.met_korting; l.inkoop = r.inkoop; l.opslag = r.opslag; l.inkoopBekend = true; }
                 } );
                 teken();
             } ).fail( function () {
@@ -311,7 +326,8 @@
     function open( nieuweModus ) {
         modus = nieuweModus;
         bezig = false;
-        lijnen = []; overig = {}; uitkomst = null; klant = null; klantLaatste = ''; verzendPrijs = null;
+        lijnen = []; overig = {}; uitkomst = null; klant = null; klantLaatste = ''; verzendPrijs = null; korting = '';
+        $( '#gtxxl-bm-korting' ).val( '' );
         $melding.empty();
         $form.hide();
         $overlay.find( '.gtxxl-bm__producten' ).show();
@@ -471,6 +487,14 @@
             }
         } );
 
+        // Korting in procenten: leeg of 0 = geen korting; meer dan 100 kan niet.
+        $overlay.on( 'change', '#gtxxl-bm-korting', function () {
+            var p = parseFloat( $.trim( $( this ).val() ).replace( '%', '' ).replace( ',', '.' ) );
+            p = isNaN( p ) || p <= 0 ? '' : Math.min( 100, Math.round( p * 100 ) / 100 );
+            $( this ).val( '' === p ? '' : String( p ).replace( '.', ',' ) );
+            if ( String( p ) !== String( korting ) ) { korting = p; herreken(); }
+        } );
+        $overlay.on( 'keydown', '#gtxxl-bm-korting', function ( e ) { if ( 'Enter' === e.key ) { e.preventDefault(); $( this ).trigger( 'change' ); } } );
         $overlay.on( 'change', 'input[name="gtxxl-bm-levering"]', function () { zetLevering( $( this ).val() ); } );
         // Hoeft de bestelling niet verzonden te worden, dan ook geen verzendkosten.
         $overlay.on( 'change', '#gtxxl-bm-niet-verzenden', function () {

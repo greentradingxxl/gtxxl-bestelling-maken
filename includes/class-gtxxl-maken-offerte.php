@@ -489,6 +489,31 @@ class GTXXL_Maken_Offerte {
                 ? sprintf( __( 'Offerte %s', 'gtxxl-maken' ), $nummer )
                 : __( 'Offerte (de pdf is nog niet gemaakt)', 'gtxxl-maken' ) )
         );
+        // Alleen voor de medewerker: inkoop en marge op de producten (zonder btw en verzendkosten).
+        $inkoop   = 0.0;
+        $omzet    = 0.0;
+        $onbekend = 0;
+        foreach ( $order->get_items() as $item ) {
+            $stuk = GTXXL_Maken::inkoop( $item->get_product() );
+            if ( null === $stuk ) {
+                $onbekend++;
+                continue;
+            }
+            $inkoop += $stuk * (int) $item->get_quantity();
+            $omzet  += (float) $item->get_total();
+        }
+        if ( $inkoop > 0 ) {
+            printf(
+                '<p class="gtxxl-offerte-marge">%s</p>',
+                esc_html( sprintf(
+                    /* translators: 1: inkoop, 2: winst, 3: opslag in procenten */
+                    __( 'Inkoop %1$s · winst %2$s · opslag %3$s', 'gtxxl-maken' ),
+                    GTXXL_Maken::bedrag( $inkoop, $order ),
+                    GTXXL_Maken::bedrag( $omzet - $inkoop, $order ),
+                    str_replace( '.', ',', (string) round( ( $omzet / $inkoop - 1 ) * 100, 1 ) ) . ' %'
+                ) . ( $onbekend ? ' · ' . sprintf( __( '%d product(en) zonder inkoopprijs telt niet mee', 'gtxxl-maken' ), $onbekend ) : '' ) )
+            );
+        }
         if ( ! $order->is_paid() && $order->has_status( [ self::STATUS, self::VERLOPEN ] ) ) {
             printf(
                 '<label for="gtxxl_offerte_tot">%s</label><input type="date" id="gtxxl_offerte_tot" name="gtxxl_offerte_tot" value="%s">',
@@ -568,6 +593,10 @@ class GTXXL_Maken_Offerte {
         foreach ( [ 'columns', 'totals' ] as $soort ) {
             if ( empty( $instellingen[ "fields_offerte_{$soort}" ] ) && ! empty( $instellingen[ "fields_invoice_{$soort}" ] ) ) {
                 $instellingen[ "fields_offerte_{$soort}" ] = $instellingen[ "fields_invoice_{$soort}" ];
+                // De korting direct onder de goederenwaarde, zodat de bedragen onder elkaar optellen tot het netto.
+                if ( 'totals' === $soort ) {
+                    $instellingen['fields_offerte_totals'] = self::korting_onder_subtotaal( (array) $instellingen['fields_offerte_totals'] );
+                }
             }
         }
         if ( isset( $instellingen['sort_items'] ) && is_array( $instellingen['sort_items'] ) && ! isset( $instellingen['sort_items']['offerte'] ) && isset( $instellingen['sort_items']['invoice'] ) ) {
@@ -588,6 +617,30 @@ class GTXXL_Maken_Offerte {
         $order = $document->order ?? null;
 
         return $order instanceof WC_Order && $order->has_status( [ self::STATUS, self::VERLOPEN ] ) ? false : $mag;
+    }
+
+    /** De totalen van de pdf met de kortingsregel direct na het subtotaal; de nummering (1, 2, …) blijft doorlopend. */
+    private static function korting_onder_subtotaal( array $totalen ): array {
+        $korting = [];
+        $rest    = [];
+        foreach ( $totalen as $regel ) {
+            if ( is_array( $regel ) && 'discount' === ( $regel['type'] ?? '' ) ) {
+                $korting[] = $regel;
+            } else {
+                $rest[] = $regel;
+            }
+        }
+        $uit = [];
+        foreach ( $rest as $regel ) {
+            $uit[] = $regel;
+            if ( is_array( $regel ) && 'subtotal' === ( $regel['type'] ?? '' ) ) {
+                array_push( $uit, ...$korting );
+                $korting = [];
+            }
+        }
+        $uit = array_merge( $uit, $korting );
+
+        return $uit ? array_combine( range( 1, count( $uit ) ), $uit ) : $totalen;
     }
 
     /** Het eigen template; opmaak (style.css) en omhulsel komen uit het gekozen template van "PDF Invoices". */

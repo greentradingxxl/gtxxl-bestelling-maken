@@ -59,6 +59,16 @@ class GTXXL_Maken_Offerte_Document extends GTXXL_Maken_Offerte_Basis {
             : sprintf( 'Dieses Angebot ist freibleibend und gültig bis einschließlich %s. Du nimmst es an, indem du über den Link in unserer E-Mail bezahlst.', $datum );
     }
 
+    /**
+     * De voettekst zonder de regel met de bankgegevens: betalen gaat via de link (Stripe), en een IBAN op een offerte
+     * nodigt uit tot overmaken. De andere regels (handelsregister, btw-nummer, registraties) blijven staan.
+     */
+    public function get_footer() {
+        $voet = (string) parent::get_footer();
+
+        return (string) preg_replace( '/[^<>\n]*\bIBAN\b[^<>\n]*(<br\s*\/?>)?\s*/i', '', $voet );
+    }
+
     /** Alleen bij bestellingen die als offerte zijn gemaakt. */
     public function is_allowed() {
         return GTXXL_Maken_Offerte::is_offerte( $this->order ?? null ) && parent::is_allowed();

@@ -54,12 +54,22 @@ $gtxxl_rand = ' border-top:1px solid #e6ebe7;';
 
 // De regels: producten met foto, daarna verzending en kosten.
 $gtxxl_regels = array();
+// Producten tegen de gewone prijs; een korting staat als eigen regel eronder.
 foreach ( $order->get_items() as $gtxxl_item ) {
 	$gtxxl_regels[] = array(
 		'naam'   => wp_strip_all_tags( $gtxxl_item->get_name() ),
 		'aantal' => '×' . $gtxxl_item->get_quantity(),
-		'bedrag' => $gtxxl_geld( (float) $gtxxl_item->get_total() + (float) $gtxxl_item->get_total_tax() ),
+		'bedrag' => $gtxxl_geld( (float) $gtxxl_item->get_subtotal() + (float) $gtxxl_item->get_subtotal_tax() ),
 	) + GTXXL_Wijzigen_Plan::foto( $gtxxl_item->get_product() );
+}
+$gtxxl_korting = (float) $order->get_discount_total() + (float) $order->get_discount_tax();
+if ( $gtxxl_korting > 0.004 ) {
+	$gtxxl_regels[] = array(
+		'naam'   => $gtxxl_nl ? 'Korting' : 'Rabatt',
+		'aantal' => '',
+		'bedrag' => '− ' . $gtxxl_geld( $gtxxl_korting ),
+		'foto'   => '',
+	);
 }
 foreach ( $order->get_items( array( 'shipping', 'fee' ) ) as $gtxxl_item ) {
 	$gtxxl_regels[] = array(

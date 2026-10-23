@@ -129,6 +129,18 @@ class GTXXL_Maken_Admin {
                 'geenRegels'   => __( 'Er zit nog niets in de bestelling. Zoek hieronder een product.', 'gtxxl-maken' ),
                 'eerstKlant'   => __( 'Kies eerst een klant.', 'gtxxl-maken' ),
                 'totaal'       => __( 'Totaal', 'gtxxl-maken' ),
+                'korting'      => __( 'Korting', 'gtxxl-maken' ),
+                /* translators: %s: bedrag */
+                'metKorting'   => __( 'Met korting %s', 'gtxxl-maken' ),
+                /* translators: 1: inkoopprijs, 2: opslag in procenten */
+                'inkoopRegel'  => __( 'Inkoop %1$s · opslag %2$s', 'gtxxl-maken' ),
+                'geenInkoop'   => __( 'geen inkoopprijs', 'gtxxl-maken' ),
+                'inkoop'       => __( 'Inkoop', 'gtxxl-maken' ),
+                'winst'        => __( 'Winst', 'gtxxl-maken' ),
+                'opslag'       => __( 'opslag', 'gtxxl-maken' ),
+                'zonderBtwVerzend' => __( 'producten, zonder btw en verzendkosten', 'gtxxl-maken' ),
+                /* translators: %d: aantal producten */
+                'zonderInkoop' => __( '%d product(en) zonder inkoopprijs telt niet mee', 'gtxxl-maken' ),
                 'zonderBtw'    => __( 'zonder btw', 'gtxxl-maken' ),
                 'leeg'         => __( 'Kies minstens één product.', 'gtxxl-maken' ),
                 'bezig'        => __( 'Bezig…', 'gtxxl-maken' ),
@@ -305,6 +317,11 @@ class GTXXL_Maken_Admin {
                             <label><input type="radio" name="gtxxl-bm-levering" value="afhalen"> <?php echo esc_html( __( 'Afhalen in de winkel', 'gtxxl-maken' ) ); ?></label>
                             <label><input type="radio" name="gtxxl-bm-levering" value="geen"> <?php echo esc_html( __( 'Geen verzendkosten', 'gtxxl-maken' ) ); ?></label>
                         </div>
+                        <div data-alleen="nieuw offerte">
+                            <h3><?php echo esc_html( __( 'Korting', 'gtxxl-maken' ) ); ?></h3>
+                            <label class="gtxxl-bm__korting"><input type="text" inputmode="decimal" id="gtxxl-bm-korting" placeholder="0" aria-label="<?php echo esc_attr( __( 'Korting op de producten in procenten', 'gtxxl-maken' ) ); ?>"> <span>% <?php echo esc_html( __( 'op de producten', 'gtxxl-maken' ) ); ?></span></label>
+                            <p class="gtxxl-wz__klein"><?php echo esc_html( __( 'Niet op producten waarvan je zelf de prijs hebt aangepast, en niet op de verzendkosten. De klant ziet de gewone prijs met de korting eronder.', 'gtxxl-maken' ) ); ?></p>
+                        </div>
                         <div data-alleen="kopie">
                             <label class="gtxxl-wz__vink"><input type="checkbox" id="gtxxl-bm-niet-verzenden"> <?php echo esc_html( __( 'Bestelling hoeft niet meer verzonden te worden', 'gtxxl-maken' ) ); ?></label>
                             <p class="gtxxl-wz__klein"><?php echo esc_html( __( 'Na betaling gaat ze direct naar "Afgerond" en komt ze niet bij de inpakkers.', 'gtxxl-maken' ) ); ?></p>
@@ -373,6 +390,7 @@ class GTXXL_Maken_Admin {
             'voorraad'       => sanitize_key( wp_unslash( $_POST['voorraad'] ?? '' ) ),
             'mail'           => '1' === (string) ( $_POST['mail'] ?? '0' ),
             'bericht'        => sanitize_textarea_field( wp_unslash( $_POST['bericht'] ?? '' ) ),
+            'korting'        => max( 0.0, min( 100.0, (float) str_replace( ',', '.', (string) wp_unslash( $_POST['korting'] ?? '0' ) ) ) ), // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
             'offerte'        => 'offerte' === ( $_POST['soort'] ?? '' ),
             'geldig'         => sanitize_text_field( wp_unslash( $_POST['geldig'] ?? '' ) ),
         ];
@@ -407,7 +425,19 @@ class GTXXL_Maken_Admin {
         }
         $regels = [];
         foreach ( $plan['regels'] as $r ) {
-            $regels[] = [ 'sleutel' => $r['sleutel'], 'naam' => $r['naam'], 'sku' => $r['sku'], 'foto' => $r['foto'], 'stuk' => $r['stuk'], 'standaard' => $r['standaard'] ];
+            // Inkoop per stuk en opslag zoals in het productscherm: (verkoop zonder btw / inkoop - 1) × 100.
+            $netto_stuk = $r['aantal'] > 0 ? (float) $r['netto'] / $r['aantal'] : 0.0;
+            $regels[]   = [
+                'sleutel'     => $r['sleutel'],
+                'naam'        => $r['naam'],
+                'sku'         => $r['sku'],
+                'foto'        => $r['foto'],
+                'stuk'        => $r['stuk'],
+                'standaard'   => $r['standaard'],
+                'met_korting' => $r['met_korting'],
+                'inkoop'      => $r['inkoop'],
+                'opslag'      => $r['inkoop'] ? round( ( $netto_stuk / $r['inkoop'] - 1 ) * 100, 1 ) : null,
+            ];
         }
         $v = $plan['verzend'];
         wp_send_json_success( [
@@ -416,6 +446,13 @@ class GTXXL_Maken_Admin {
             'toeslag'   => $plan['toeslag'] ? [ 'naam' => $plan['toeslag']['naam'], 'bedrag' => (float) $plan['toeslag']['bruto'], 'stuks' => (int) $plan['toeslag']['stuks'] ] : null,
             'totaal'    => $plan['totaal'],
             'btw_vrij'  => (bool) $plan['btw_vrij'],
+            'korting'   => (float) $plan['korting_bedrag'],
+            'marge'     => [
+                'inkoop'   => round( $plan['marge']['inkoop'], 2 ),
+                'winst'    => round( $plan['marge']['omzet'] - $plan['marge']['inkoop'], 2 ),
+                'opslag'   => $plan['marge']['inkoop'] > 0 ? round( ( $plan['marge']['omzet'] / $plan['marge']['inkoop'] - 1 ) * 100, 1 ) : null,
+                'onbekend' => (int) $plan['marge']['onbekend'],
+            ],
             'let_op'    => array_values( (array) $plan['let_op'] ),
             'btw_tekst' => $origineel ? '' : GTXXL_Maken_Klant::btw_tekst( $klant ),
         ] );

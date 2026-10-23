@@ -402,3 +402,42 @@ msgstr "Alle Angebote"
 
 msgid "Offertes &lsaquo; %s &#8212; WordPress"
 msgstr "Angebote &lsaquo; %s &#8212; WordPress"
+
+msgid "Korting"
+msgstr "Rabatt"
+
+msgid "Korting op de producten in procenten"
+msgstr "Rabatt auf die Produkte in Prozent"
+
+msgid "op de producten"
+msgstr "auf die Produkte"
+
+msgid "Niet op producten waarvan je zelf de prijs hebt aangepast, en niet op de verzendkosten. De klant ziet de gewone prijs met de korting eronder."
+msgstr "Nicht auf Produkte, deren Preis du selbst angepasst hast, und nicht auf die Versandkosten. Der Kunde sieht den normalen Preis mit dem Rabatt darunter."
+
+msgid "Met korting %s"
+msgstr "Mit Rabatt %s"
+
+msgid "Inkoop %1$s · opslag %2$s"
+msgstr "Einkauf %1$s · Aufschlag %2$s"
+
+msgid "geen inkoopprijs"
+msgstr "kein Einkaufspreis"
+
+msgid "Inkoop"
+msgstr "Einkauf"
+
+msgid "Winst"
+msgstr "Gewinn"
+
+msgid "opslag"
+msgstr "Aufschlag"
+
+msgid "producten, zonder btw en verzendkosten"
+msgstr "Produkte, ohne MwSt. und Versandkosten"
+
+msgid "%d product(en) zonder inkoopprijs telt niet mee"
+msgstr "%d Produkt(e) ohne Einkaufspreis nicht berücksichtigt"
+
+msgid "Inkoop %1$s · winst %2$s · opslag %3$s"
+msgstr "Einkauf %1$s · Gewinn %2$s · Aufschlag %3$s"

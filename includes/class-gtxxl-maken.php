@@ -177,6 +177,27 @@ class GTXXL_Maken {
         return [ 'netto' => $bruto - array_sum( $tax ), 'tax' => $tax ];
     }
 
+    /**
+     * De inkoopprijs per stuk zonder btw (veld "Inkoopprijs excl." in het product, _alg_wc_cog_cost), of null als die
+     * er niet is. Uit het product in de hoofdtaal: daar wordt de inkoopprijs bijgehouden.
+     */
+    public static function inkoop( $product ): ?float {
+        if ( ! $product instanceof WC_Product ) {
+            return null;
+        }
+        $id   = $product->get_id();
+        $taal = apply_filters( 'wpml_default_language', null );
+        if ( $taal ) {
+            $id = (int) apply_filters( 'wpml_object_id', $id, get_post_type( $id ) ?: 'product', true, $taal ) ?: $id;
+        }
+        $inkoop = (float) get_post_meta( $id, '_alg_wc_cog_cost', true );
+        if ( $inkoop <= 0 && $id !== $product->get_id() ) {
+            $inkoop = (float) get_post_meta( $product->get_id(), '_alg_wc_cog_cost', true );
+        }
+
+        return $inkoop > 0 ? $inkoop : null;
+    }
+
     private static function gewicht( $product, int $aantal ): float {
         return $product instanceof WC_Product && $product->needs_shipping() ? (float) wc_get_weight( (float) $product->get_weight(), 'kg' ) * $aantal : 0.0;
     }
@@ -213,6 +234,8 @@ class GTXXL_Maken {
         $gewicht  = 0.0;
         $toeslag_stuks = 0;
         $let_op   = [];
+        // Korting in procenten op de producten die erbij komen (snelle bestelling en offerte).
+        $korting  = max( 0.0, min( 100.0, round( (float) ( $in['korting'] ?? 0 ), 2 ) ) );
 
         // Uit de bestaande bestelling: de prijs die de klant destijds betaalde, tenzij er een andere is opgegeven.
         foreach ( (array) ( $in['aantallen'] ?? [] ) as $item_id => $keuze ) {
@@ -235,7 +258,7 @@ class GTXXL_Maken {
                 $prijs = $standaard;
                 $deel  = self::uit_bruto( $klant, (string) $item->get_tax_class(), 'taxable' === $item->get_tax_status(), ( $per + array_sum( $per_tax ) ) * $aantal );
             }
-            $regels[] = [ 'sleutel' => 'r' . (int) $item_id, 'item' => $item, 'product' => $product, 'naam' => wp_strip_all_tags( $item->get_name() ), 'sku' => $product ? (string) $product->get_sku() : '', 'aantal' => $aantal, 'stuk' => $prijs, 'standaard' => $standaard, 'tax_class' => (string) $item->get_tax_class() ] + $deel + GTXXL_Wijzigen_Plan::foto( $product );
+            $regels[] = [ 'sleutel' => 'r' . (int) $item_id, 'item' => $item, 'product' => $product, 'naam' => wp_strip_all_tags( $item->get_name() ), 'sku' => $product ? (string) $product->get_sku() : '', 'aantal' => $aantal, 'stuk' => $prijs, 'standaard' => $standaard, 'tax_class' => (string) $item->get_tax_class(), 'met_korting' => null, 'sub_netto' => null, 'sub_tax' => null, 'inkoop' => $product ? self::inkoop( $product ) : null ] + $deel + GTXXL_Wijzigen_Plan::foto( $product );
             $gewicht += self::gewicht( $product, $aantal );
             $toeslag_stuks += GTXXL_Wijzigen_Plan::toeslag_geldt( $product ) ? $aantal : 0;
         }
@@ -257,14 +280,23 @@ class GTXXL_Maken {
             }
             $standaard = (float) GTXXL_Wijzigen_Plan::prijs( $klant, $product, 1 )['bruto'];
             $prijs     = isset( $keuze['prijs'] ) && '' !== $keuze['prijs'] && null !== $keuze['prijs'] ? max( 0.0, round( (float) $keuze['prijs'], 2 ) ) : null;
+            $sub       = null;
+            $met_korting = null;
             if ( null !== $prijs && abs( $prijs - $standaard ) >= 0.005 ) {
                 $deel = self::uit_bruto( $klant, (string) $product->get_tax_class(), $product->is_taxable(), $prijs * $aantal );
             } else {
                 $prijs = $standaard;
                 $nu    = GTXXL_Wijzigen_Plan::prijs( $klant, $product, $aantal );
                 $deel  = [ 'netto' => (float) $nu['netto'], 'tax' => (array) $nu['tax'] ];
+                // Korting in procenten: alleen op de gewone prijs, niet op een zelf ingevulde prijs. De gewone prijs
+                // blijft het subtotaal van de regel, zodat de klant de korting ziet (mail, pdf, factuur).
+                if ( $korting > 0 ) {
+                    $sub         = $deel;
+                    $met_korting = round( $standaard * ( 1 - $korting / 100 ), 2 );
+                    $deel        = self::uit_bruto( $klant, (string) $product->get_tax_class(), $product->is_taxable(), $met_korting * $aantal );
+                }
             }
-            $regels[] = [ 'sleutel' => 'p' . (int) $product_id, 'item' => null, 'product' => $product, 'naam' => wp_strip_all_tags( $product->get_name() ), 'sku' => (string) $product->get_sku(), 'aantal' => $aantal, 'stuk' => $prijs, 'standaard' => $standaard, 'tax_class' => (string) $product->get_tax_class() ] + $deel + GTXXL_Wijzigen_Plan::foto( $product );
+            $regels[] = [ 'sleutel' => 'p' . (int) $product_id, 'item' => null, 'product' => $product, 'naam' => wp_strip_all_tags( $product->get_name() ), 'sku' => (string) $product->get_sku(), 'aantal' => $aantal, 'stuk' => $prijs, 'standaard' => $standaard, 'tax_class' => (string) $product->get_tax_class(), 'met_korting' => $met_korting, 'sub_netto' => $sub ? (float) $sub['netto'] : null, 'sub_tax' => $sub ? (array) $sub['tax'] : null, 'inkoop' => self::inkoop( $product ) ] + $deel + GTXXL_Wijzigen_Plan::foto( $product );
             $gewicht += self::gewicht( $product, $aantal );
             $toeslag_stuks += GTXXL_Wijzigen_Plan::toeslag_geldt( $product ) ? $aantal : 0;
         }
@@ -338,7 +370,22 @@ class GTXXL_Maken {
             $totaal += round( (float) $verzend['netto'], $dp ) + array_sum( array_map( 'floatval', (array) $verzend['tax'] ) );
         }
 
-        return [ 'regels' => $regels, 'kosten' => $kosten, 'verzend' => $verzend, 'toeslag' => $toeslag, 'levering' => $levering, 'totaal' => round( $totaal, $dp ), 'btw_vrij' => GTXXL_Wijzigen_Plan::btw_vrij( $klant ), 'let_op' => $let_op ];
+        // Korting (inclusief btw, zoals de klant hem ziet) en de marge op de producten (zonder btw en verzendkosten).
+        $korting_bedrag = 0.0;
+        $marge          = [ 'omzet' => 0.0, 'inkoop' => 0.0, 'onbekend' => 0 ];
+        foreach ( $regels as $regel ) {
+            if ( null !== $regel['sub_netto'] ) {
+                $korting_bedrag += ( $regel['sub_netto'] + array_sum( $regel['sub_tax'] ) ) - ( $regel['netto'] + array_sum( $regel['tax'] ) );
+            }
+            if ( null === $regel['inkoop'] ) {
+                $marge['onbekend']++;
+                continue;
+            }
+            $marge['omzet']  += (float) $regel['netto'];
+            $marge['inkoop'] += $regel['inkoop'] * $regel['aantal'];
+        }
+
+        return [ 'regels' => $regels, 'kosten' => $kosten, 'verzend' => $verzend, 'toeslag' => $toeslag, 'levering' => $levering, 'totaal' => round( $totaal, $dp ), 'btw_vrij' => GTXXL_Wijzigen_Plan::btw_vrij( $klant ), 'let_op' => $let_op, 'korting' => $korting, 'korting_bedrag' => round( $korting_bedrag, 2 ), 'marge' => $marge ];
     }
 
     /* ------------------------------------------------------------------ */
@@ -428,9 +475,10 @@ class GTXXL_Maken {
                 $regel->set_name( $r['naam'] );
                 $regel->set_quantity( $r['aantal'] );
                 $regel->set_tax_class( $r['tax_class'] );
-                $regel->set_subtotal( $r['netto'] );
+                // Met korting: het subtotaal is de gewone prijs, het totaal de prijs met korting.
+                $regel->set_subtotal( null !== $r['sub_netto'] ? $r['sub_netto'] : $r['netto'] );
                 $regel->set_total( $r['netto'] );
-                $regel->set_taxes( [ 'subtotal' => $r['tax'], 'total' => $r['tax'] ] );
+                $regel->set_taxes( [ 'subtotal' => null !== $r['sub_tax'] ? $r['sub_tax'] : $r['tax'], 'total' => $r['tax'] ] );
                 if ( $r['item'] ) {
                     foreach ( $r['item']->get_meta_data() as $meta ) {
                         if ( ! in_array( $meta->key, [ '_reduced_stock', '_restock_refunded_items' ], true ) ) {
@@ -482,6 +530,9 @@ class GTXXL_Maken {
             }
             if ( ! empty( $in['niet_verzenden'] ) ) {
                 $delen[] = 'hoeft niet verzonden te worden (na betaling direct afgerond)';
+            }
+            if ( $plan['korting'] > 0 && $plan['korting_bedrag'] > 0 ) {
+                $delen[] = sprintf( 'korting %s%% op de producten (%s)', str_replace( '.', ',', (string) $plan['korting'] ), self::bedrag( $plan['korting_bedrag'], $nieuw ) );
             }
             foreach ( $plan['regels'] as $r ) {
                 if ( abs( $r['stuk'] - $r['standaard'] ) >= 0.005 ) {

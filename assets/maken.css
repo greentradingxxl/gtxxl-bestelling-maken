@@ -105,3 +105,15 @@
 .order-status.status-offerte-verlopen { background: #ececec; color: #6b6b6b; }
 .gtxxl-offerte-blok label { display: block; margin: 8px 0 2px; }
 .gtxxl-offerte-blok input { width: 100%; }
+
+/* Korting in procenten en (alleen voor de medewerker) inkoop en marge. */
+.gtxxl-bm__korting { display: flex; align-items: center; gap: 8px; }
+.gtxxl-bm__korting input { width: 80px; min-height: 32px; margin: 0; text-align: right; }
+.gtxxl-wz__naam .gtxxl-bm__metkorting { background: #dff0d8; color: #23582c; }
+.gtxxl-wz__naam .gtxxl-bm__inkoop { display: block; margin-top: 2px; color: #8a6d3b; font-size: 11px; }
+.gtxxl-bm__marge { margin-top: 10px; border-top: 1px dashed #dcdcde; padding-top: 8px; color: #50575e; font-size: 12px; }
+.gtxxl-bm__marge div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+.gtxxl-bm__marge strong { color: #1e1e1e; }
+.gtxxl-bm__marge small { display: block; margin-top: 2px; color: #787c82; font-size: 11px; }
+.gtxxl-offerte-blok .gtxxl-offerte-marge { margin: 6px 0 0; color: #8a6d3b; font-size: 12px; }
+.gtxxl-bm .gtxxl-wz__rechts [data-alleen="nieuw offerte"] > h3 { margin-top: 18px; }
